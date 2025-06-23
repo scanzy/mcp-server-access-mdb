@@ -64,6 +64,9 @@ async def PerformTest(mcpClient: Client, dbPath: str) -> None:
     print("Querying TestTable...")
     results = await mcpClient.call_tool("query", {"sql": "SELECT * FROM TestTable"})
     print("TestTable contents:")
+
+    from mcp.types import TextContent
+    assert results[0] is TextContent
     print(results[0].text)
 
     print("Dropping TestTable...")
