@@ -66,12 +66,16 @@ async def PerformTest(mcpClient: Client, dbPath: str) -> None:
     print("TestTable contents:")
 
     from mcp.types import TextContent
-    assert results[0] is TextContent
+    assert type(results[0]) is TextContent
     print(results[0].text)
 
     print("Dropping TestTable...")
     await mcpClient.call_tool("update", {"sql": "DROP TABLE TestTable"})
     print("TestTable dropped")
+
+    print("Disconnecting from database...")
+    await mcpClient.call_tool("disconnect", {})
+    print("Disconnected from database.")
 
 
 if __name__ == "__main__":

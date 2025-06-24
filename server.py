@@ -63,6 +63,19 @@ def Update(sql: str, ctx: Context, parameters: dict | None = None) -> bool:
         return True
 
 
+@mcp.tool(name="disconnect")
+def Disconnect(ctx: Context) -> str:
+    """Disconnect from the MS Access database."""
+    engine = getattr(ctx.fastmcp, "engine", None)
+    if engine:
+        # Dispose the SQLAlchemy engine and remove it from context
+        engine.dispose()
+        delattr(ctx.fastmcp, "engine")
+        return "Disconnected from the database."
+    else:
+        raise FastMCPError("No active database connection to disconnect.")
+
+
 if __name__ == "__main__":
     # Run the MCP server event loop
     mcp.run()
