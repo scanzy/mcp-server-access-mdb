@@ -9,6 +9,7 @@ The script:
 - Deletes the table
 """
 
+import os
 import asyncio
 from pathlib import Path
 from fastmcp import Client
@@ -16,7 +17,7 @@ from fastmcp.exceptions import FastMCPError
 
 
 def main():
-    dbPath = Path("empty.mdb").absolute()
+    dbPath = Path("test.db").absolute()
     asyncio.run(RunTest(str(dbPath)))
 
 
@@ -29,9 +30,21 @@ async def RunTest(dbPath: str) -> None:
     # create a client to connect to the MCP server
     async with Client(mcp) as mcpClient:
         try:
+            # Create a new database to run tests
+            print(f"Creating new database at {dbPath}...")
+            await mcpClient.call_tool("create", {"targetPath": str(dbPath)})
+            print("Test database created.")
+
             await PerformTest(mcpClient, dbPath)
+
         except FastMCPError as e:
             print(f"Operation failed: {e}")
+        
+        finally:
+            # Delete the test database file at the end
+            if not Path(dbPath).exists(): return
+            os.remove(dbPath)
+            print(f"Deleted test database: {dbPath}")
 
 
 async def PerformTest(mcpClient: Client, dbPath: str) -> None:
@@ -39,7 +52,7 @@ async def PerformTest(mcpClient: Client, dbPath: str) -> None:
 
     print("Connecting to database...")
     await mcpClient.call_tool("connect", {"databasePath": dbPath})
-    print("Connected successfully")
+    print("Connected successfully.")
 
     print("Creating TestTable...")
     createTableSql = """
@@ -59,7 +72,7 @@ async def PerformTest(mcpClient: Client, dbPath: str) -> None:
     ]
     for sql in insertData:
         await mcpClient.call_tool("update", {"sql": sql})
-    print("Sample data inserted")
+    print("Sample data inserted.")
 
     print("Querying TestTable...")
     results = await mcpClient.call_tool("query", {"sql": "SELECT * FROM TestTable"})
@@ -71,7 +84,7 @@ async def PerformTest(mcpClient: Client, dbPath: str) -> None:
 
     print("Dropping TestTable...")
     await mcpClient.call_tool("update", {"sql": "DROP TABLE TestTable"})
-    print("TestTable dropped")
+    print("TestTable dropped.")
 
     print("Disconnecting from database...")
     await mcpClient.call_tool("disconnect", {})

@@ -1,5 +1,8 @@
 """MCP server for Microsoft Access databases."""
 
+import shutil
+from pathlib import Path
+
 import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy.engine import URL
@@ -8,8 +11,30 @@ from fastmcp import FastMCP, Context
 from fastmcp.exceptions import FastMCPError
 
 
-# Initialize the MCP server - this handles all protocol-level communication
+# Initialize the MCP server for protocol-level communication
 mcp = FastMCP("MS Access Database", dependencies=["pandas", "sqlalchemy-access"])
+
+
+@mcp.tool(name="create")
+def CreateDatabase(targetPath: str, ctx: Context) -> str:
+    """Create a new MS Access database by copying empty.mdb to the specified path."""
+
+    # Ensure the empty template exists
+    emptyTemplate = Path(__file__).parent / "empty.mdb"
+    if not emptyTemplate.exists():
+        raise FastMCPError(f"Template database not found: {emptyTemplate}")
+
+    # Check if the target path is valid and does not already exist
+    target = Path(targetPath)
+    if target.exists():
+        raise FastMCPError(f"Target file already exists: {target}")
+
+    # Creates the database by copying the template
+    try:
+        shutil.copy(str(emptyTemplate), str(target))
+        return f"Database created at {target}"
+    except Exception as e:
+        raise FastMCPError(f"Failed to create database: {e}")
 
 
 @mcp.tool(name="connect")
@@ -26,8 +51,8 @@ def Connect(databasePath: str, ctx: Context) -> str:
         # This allows other tools to reuse the connection
         setattr(ctx.fastmcp, "engine", sa.create_engine(connectionUrl))
         return "Successfully connected to the database."
+
     except Exception as e:
-        # Raise a FastMCPError with a descriptive message
         raise FastMCPError(f"Error connecting to database: {str(e)}")
 
 
