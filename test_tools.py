@@ -1,12 +1,19 @@
 """
-This script tests the MCP server's functionality for connecting to an MS Access database, creating a table, inserting data, querying the table, and deleting the table.
+This script tests the MCP server's functionality for connecting to test databases.
 
-The script:
+2 tests are performed:
+- the first connects to a single database
+- the second connects to two databases simultaneously
+
+For every test, the following operations are performed:
+- Creates a new database
 - Connects to the database
 - Creates a new table
 - Adds sample data to the table
 - Prints the data in the table
 - Deletes the table
+- Disconnects from the database
+- Deletes the database file
 """
 
 import os
@@ -16,44 +23,105 @@ from fastmcp import Client
 from fastmcp.exceptions import FastMCPError
 
 
+# Define paths for the test databases
+dbPath1 = str(Path("test1.db").absolute())
+dbPath2 = str(Path("test2.db").absolute())
+
+
 def main():
-    dbPath = Path("test.db").absolute()
-    asyncio.run(RunTest(str(dbPath)))
+    asyncio.run(RunTests())
 
 
-async def RunTest(dbPath: str) -> None:
-    """Run the test for MS Access database operations using MCP."""
+async def RunTests() -> None:
+    """Run tests for database operations using MCP."""
 
     # run the MCP server in the background
     from server import mcp
 
     # create a client to connect to the MCP server
     async with Client(mcp) as mcpClient:
-        try:
-            # Create a new database to run tests
-            print(f"Creating new database at {dbPath}...")
-            await mcpClient.call_tool("create", {"targetPath": str(dbPath)})
-            print("Test database created.")
-
-            await PerformTest(mcpClient, dbPath)
-
-        except FastMCPError as e:
-            print(f"Operation failed: {e}")
-        
-        finally:
-            # Delete the test database file at the end
-            if not Path(dbPath).exists(): return
-            os.remove(dbPath)
-            print(f"Deleted test database: {dbPath}")
+        await PerformTest1(mcpClient, dbPath1, "test1")
+        await PerformTest2(mcpClient, dbPath1, dbPath2, "test1", "test2")
 
 
-async def PerformTest(mcpClient: Client, dbPath: str) -> None:
-    """Perform a series of operations on the MS Access database."""
 
+async def PerformTest1(mcpClient: Client, dbPath: str, key: str) -> None:
+    """Perform a series of operations on one database."""
+
+    try:
+        await TestCreateDatabase(mcpClient, dbPath)
+        await TestConnect(mcpClient, key, dbPath)
+        await TestCreateTable(mcpClient, key)
+        await TestInsert(mcpClient, key)
+        await TestQuery(mcpClient, key)
+        await TestDropTable(mcpClient, key)
+        await TestDisconnect(mcpClient, key)
+        print("Test 1 completed successfully.")
+
+    except FastMCPError as e:
+        print(f"Operation failed: {e}")
+    
+    finally:
+        await TestDeleteDatabase(dbPath)
+
+
+async def PerformTest2(mcpClient: Client, dbPath1: str, dbPath2: str, key1: str, key2: str) -> None:
+    """Perform a series of operations on 2 databases opened at the same time."""
+
+    try:
+        await TestCreateDatabase(mcpClient, dbPath1)
+        await TestCreateDatabase(mcpClient, dbPath2)
+
+        await TestConnect(mcpClient, key1, dbPath1)
+        await TestConnect(mcpClient, key2, dbPath2)
+
+        await TestCreateTable(mcpClient, key1)
+        await TestCreateTable(mcpClient, key2)
+
+        await TestInsert(mcpClient, key1)
+        await TestInsert(mcpClient, key2)
+
+        await TestQuery(mcpClient, key1)
+        await TestQuery(mcpClient, key2)
+
+        await TestDropTable(mcpClient, key1)
+        await TestDropTable(mcpClient, key2)
+
+        await TestDisconnect(mcpClient, key1)
+        await TestDisconnect(mcpClient, key2)
+        print("Test 2 completed successfully.")
+
+    except FastMCPError as e:
+        print(f"Operation failed: {e}")
+
+    finally:
+        await TestDeleteDatabase(dbPath1)
+        await TestDeleteDatabase(dbPath2)
+
+
+async def TestCreateDatabase(mcpClient: Client, dbPath: str) -> None:
+    """Create a new MS Access database for testing."""
+    print(f"Creating test database at {dbPath}...")
+    await mcpClient.call_tool("create", {"targetPath": dbPath})
+    print("Test database created.")
+
+
+async def TestDeleteDatabase(dbPath: str) -> None:
+    """Delete the test database file."""
+    if Path(dbPath).exists():
+        os.remove(dbPath)
+        print(f"Deleted test database: {dbPath}")
+    else:
+        print(f"Test database does not exist at {dbPath}.")
+
+
+async def TestConnect(mcpClient: Client, key: str, dbPath: str) -> None:
     print("Connecting to database...")
-    await mcpClient.call_tool("connect", {"databasePath": dbPath})
+    await mcpClient.call_tool("connect", {"key": key, "databasePath": dbPath})
     print("Connected successfully.")
 
+
+async def TestCreateTable(mcpClient: Client, key: str) -> None:
     print("Creating TestTable...")
     createTableSql = """
         CREATE TABLE TestTable (
@@ -62,32 +130,35 @@ async def PerformTest(mcpClient: Client, dbPath: str) -> None:
             Age INT
         )
     """
-    await mcpClient.call_tool("update", {"sql": createTableSql})
+    await mcpClient.call_tool("update", {"key": key, "sql": createTableSql})
     print("TestTable created")
 
+
+async def TestInsert(mcpClient: Client, key: str) -> None:
     print("Inserting sample data...")
-    insertData = [
-        "INSERT INTO TestTable (ID, Name, Age) VALUES (1, 'John', 30)",
-        "INSERT INTO TestTable (ID, Name, Age) VALUES (2, 'Jane', 25)"
-    ]
-    for sql in insertData:
-        await mcpClient.call_tool("update", {"sql": sql})
+    await mcpClient.call_tool("update", {"key": key, "sql": "INSERT INTO TestTable (ID, Name, Age) VALUES (1, 'John', 30)"})
+    await mcpClient.call_tool("update", {"key": key, "sql": "INSERT INTO TestTable (ID, Name, Age) VALUES (2, 'Jane', 25)"})
     print("Sample data inserted.")
 
-    print("Querying TestTable...")
-    results = await mcpClient.call_tool("query", {"sql": "SELECT * FROM TestTable"})
-    print("TestTable contents:")
 
+async def TestQuery(mcpClient: Client, key: str) -> None:
+    print("Querying TestTable...")
+    results = await mcpClient.call_tool("query", {"key": key, "sql": "SELECT * FROM TestTable"})
+    print("TestTable contents:")
     from mcp.types import TextContent
     assert type(results[0]) is TextContent
     print(results[0].text)
 
+
+async def TestDropTable(mcpClient: Client, key: str) -> None:
     print("Dropping TestTable...")
-    await mcpClient.call_tool("update", {"sql": "DROP TABLE TestTable"})
+    await mcpClient.call_tool("update", {"key": key, "sql": "DROP TABLE TestTable"})
     print("TestTable dropped.")
 
+
+async def TestDisconnect(mcpClient: Client, key: str) -> None:
     print("Disconnecting from database...")
-    await mcpClient.call_tool("disconnect", {})
+    await mcpClient.call_tool("disconnect", {"key": key})
     print("Disconnected from database.")
 
 
