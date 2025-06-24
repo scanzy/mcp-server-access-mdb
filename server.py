@@ -1,7 +1,9 @@
 """MCP server for Microsoft Access databases."""
 
 import shutil
+from typing import Any
 from pathlib import Path
+from dataclasses import dataclass, field
 
 import pandas as pd
 import sqlalchemy as sa
@@ -14,17 +16,35 @@ from fastmcp.exceptions import FastMCPError
 # Initialize the MCP server for protocol-level communication
 mcp = FastMCP("MS Access Database", dependencies=["pandas", "sqlalchemy-access"])
 
-# Set up a dictionary to hold SQLAlchemy engines for different database connections
-setattr(mcp, "engines", {})
+# Set up a dictionary to hold DBConnection objects for different database connections
+setattr(mcp, "connections", {})
+
+
+@dataclass
+class DBConnection:
+    """Dataclass to hold information about a database connection."""
+
+    key: str            # Unique identifier for the connection
+    engine: sa.Engine   # SQLAlchemy engine for the connection
+    path: str           # Path to the database file
+
+    # Additional data that can be stored with the connection
+    metadata: dict = field(default_factory=dict)
+
+
+
+def GetConnection(ctx: Context, key: str) -> DBConnection:
+    """Retrieve the DBConnection object for the given key, if it exists."""
+
+    connections = getattr(ctx.fastmcp, "connections", {})
+    if key not in connections:
+        raise FastMCPError(f"Not connected to the database with key '{key}'. Please use connect first.")
+    return connections[key]
 
 
 def GetEngine(ctx: Context, key: str):
     """Retrieve the SQLAlchemy engine for the given key, if it exists."""
-
-    engines = getattr(ctx.fastmcp, "engines", {})
-    if key not in engines:
-        raise FastMCPError(f"Not connected to the database with key '{key}'. Please use connect first.")
-    return engines[key]
+    return GetConnection(ctx, key).engine
 
 
 @mcp.tool(name="create")
@@ -60,12 +80,13 @@ def Connect(key: str, databasePath: str, ctx: Context) -> str:
         connectionUrl = URL.create("access+pyodbc", query={"odbc_connect": connectionString})
 
         # Check if the key already exists in the engines dictionary
-        engines = getattr(ctx.fastmcp, "engines")
-        if key in engines:
+        connections = getattr(ctx.fastmcp, "connections")
+        if key in connections:
             raise FastMCPError(f"Database connection with key '{key}' already exists.")
 
         # Create a new SQLAlchemy engine and store it
-        engines[key] = sa.create_engine(connectionUrl)
+        engine = sa.create_engine(connectionUrl)
+        connections[key] = DBConnection(key=key, engine=engine, path=databasePath, metadata={})
         return f"Successfully connected to the database with key '{key}'."
 
     except Exception as e:
@@ -97,15 +118,11 @@ def Update(key: str, sql: str, ctx: Context, parameters: dict | None = None) -> 
 @mcp.tool(name="disconnect")
 def Disconnect(key: str, ctx: Context) -> str:
     """Disconnect from the MS Access database identified by key."""
-
-    # Ensure the key exists in the engines dictionary
-    engines = getattr(ctx.fastmcp, "engines", {})
-    if key not in engines:
+    connections = getattr(ctx.fastmcp, "connections", {})
+    if key not in connections:
         raise FastMCPError(f"No active database connection with key '{key}' to disconnect.")
-
-    # Dispose of the engine and remove it from the dictionary
-    engines[key].dispose()
-    del engines[key]
+    connections[key].engine.dispose()
+    del connections[key]
     return f"Disconnected from the database with key '{key}'."
 
 
