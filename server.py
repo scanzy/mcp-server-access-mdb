@@ -26,10 +26,15 @@ class DBConnection:
 
     key: str            # Unique identifier for the connection
     engine: sa.Engine   # SQLAlchemy engine for the connection
-    path: str           # Path to the database file
+    path: str           # Path to the database file, with extension
 
     # Additional data that can be stored with the connection
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def type(self) -> str:
+        """Type of the database connection, determined by the file extension."""
+        return self.path.split(".")[-1].lower()
 
 
 
@@ -42,9 +47,17 @@ def GetConnection(ctx: Context, key: str) -> DBConnection:
     return connections[key]
 
 
-def GetEngine(ctx: Context, key: str):
+def GetEngine(ctx: Context, key: str) -> sa.Engine:
     """Retrieve the SQLAlchemy engine for the given key, if it exists."""
     return GetConnection(ctx, key).engine
+
+
+@mcp.tool(name="list")
+def ListConnections(ctx: Context) -> list[dict[str, Any]]:
+    """List all active database connections, returning key and path for each."""
+
+    connections = getattr(ctx.fastmcp, "connections", {})
+    return [{"key": conn.key, "path": conn.path} for conn in connections.values()]
 
 
 @mcp.tool(name="create")

@@ -49,13 +49,21 @@ async def PerformTest1(mcpClient: Client, dbPath: str, key: str) -> None:
     """Perform a series of operations on one database."""
 
     try:
+        # setup the test database
         await TestCreateDatabase(mcpClient, dbPath)
         await TestConnect(mcpClient, key, dbPath)
+
+        # perform operations on the database
         await TestCreateTable(mcpClient, key)
         await TestInsert(mcpClient, key)
         await TestQuery(mcpClient, key)
+
+        # clean up the database
         await TestDropTable(mcpClient, key)
+        await TestListConnections(mcpClient)
         await TestDisconnect(mcpClient, key)
+
+        await TestListConnections(mcpClient)
         print("Test 1 completed successfully.")
 
     except FastMCPError as e:
@@ -69,12 +77,14 @@ async def PerformTest2(mcpClient: Client, dbPath1: str, dbPath2: str, key1: str,
     """Perform a series of operations on 2 databases opened at the same time."""
 
     try:
+        # setup the test databases
         await TestCreateDatabase(mcpClient, dbPath1)
         await TestCreateDatabase(mcpClient, dbPath2)
 
         await TestConnect(mcpClient, key1, dbPath1)
         await TestConnect(mcpClient, key2, dbPath2)
 
+        # perform operations on both databases
         await TestCreateTable(mcpClient, key1)
         await TestCreateTable(mcpClient, key2)
 
@@ -84,11 +94,17 @@ async def PerformTest2(mcpClient: Client, dbPath1: str, dbPath2: str, key1: str,
         await TestQuery(mcpClient, key1)
         await TestQuery(mcpClient, key2)
 
+        # clean up both databases
         await TestDropTable(mcpClient, key1)
         await TestDropTable(mcpClient, key2)
 
+        await TestListConnections(mcpClient)
         await TestDisconnect(mcpClient, key1)
+
+        await TestListConnections(mcpClient)
         await TestDisconnect(mcpClient, key2)
+
+        await TestListConnections(mcpClient)
         print("Test 2 completed successfully.")
 
     except FastMCPError as e:
@@ -109,6 +125,7 @@ async def TestCreateDatabase(mcpClient: Client, dbPath: str) -> None:
 async def TestDeleteDatabase(dbPath: str) -> None:
     """Delete the test database file."""
     if Path(dbPath).exists():
+        print(f"Deleting test database: {dbPath}...")
         os.remove(dbPath)
         print(f"Deleted test database: {dbPath}")
     else:
@@ -119,6 +136,17 @@ async def TestConnect(mcpClient: Client, key: str, dbPath: str) -> None:
     print("Connecting to database...")
     await mcpClient.call_tool("connect", {"key": key, "databasePath": dbPath})
     print("Connected successfully.")
+
+
+async def TestListConnections(mcpClient: Client) -> None:
+    print("Retrieving active database connections...")
+    connections = await mcpClient.call_tool("list")
+
+    print(f"Active connections: {len(connections)}")
+    from mcp.types import TextContent
+    for conn in connections:
+        assert isinstance(conn, TextContent)
+        print(conn.text)
 
 
 async def TestCreateTable(mcpClient: Client, key: str) -> None:
@@ -145,8 +173,9 @@ async def TestQuery(mcpClient: Client, key: str) -> None:
     print("Querying TestTable...")
     results = await mcpClient.call_tool("query", {"key": key, "sql": "SELECT * FROM TestTable"})
     print("TestTable contents:")
+
     from mcp.types import TextContent
-    assert type(results[0]) is TextContent
+    assert isinstance(results[0], TextContent)
     print(results[0].text)
 
 
