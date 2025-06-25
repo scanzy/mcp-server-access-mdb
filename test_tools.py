@@ -24,8 +24,8 @@ from fastmcp.exceptions import FastMCPError
 
 
 # Define paths for the test databases
-dbPath1 = str(Path("test1.db").absolute())
-dbPath2 = str(Path("test2.db").absolute())
+dbPath1 = str(Path("test.mdb").absolute())  # file database
+dbPath2 = ""                                # in-memory database
 
 
 def main():
@@ -42,7 +42,6 @@ async def RunTests() -> None:
     async with Client(mcp) as mcpClient:
         await PerformTest1(mcpClient, dbPath1, "test1")
         await PerformTest2(mcpClient, dbPath1, dbPath2, "test1", "test2")
-
 
 
 async def PerformTest1(mcpClient: Client, dbPath: str, key: str) -> None:
@@ -68,7 +67,8 @@ async def PerformTest1(mcpClient: Client, dbPath: str, key: str) -> None:
 
     except FastMCPError as e:
         print(f"Operation failed: {e}")
-    
+        raise e
+
     finally:
         await TestDeleteDatabase(dbPath)
 
@@ -109,6 +109,7 @@ async def PerformTest2(mcpClient: Client, dbPath1: str, dbPath2: str, key1: str,
 
     except FastMCPError as e:
         print(f"Operation failed: {e}")
+        raise e
 
     finally:
         await TestDeleteDatabase(dbPath1)
@@ -116,14 +117,18 @@ async def PerformTest2(mcpClient: Client, dbPath1: str, dbPath2: str, key1: str,
 
 
 async def TestCreateDatabase(mcpClient: Client, dbPath: str) -> None:
-    """Create a new MS Access database for testing."""
+    """Create a new database for testing. No need to create an in-memory database."""
+    
+    if dbPath == "": return
     print(f"Creating test database at {dbPath}...")
     await mcpClient.call_tool("create", {"targetPath": dbPath})
     print("Test database created.")
 
 
 async def TestDeleteDatabase(dbPath: str) -> None:
-    """Delete the test database file."""
+    """Delete the test database file. No need to delete an in-memory database."""
+
+    if dbPath == "": return
     if Path(dbPath).exists():
         print(f"Deleting test database: {dbPath}...")
         os.remove(dbPath)

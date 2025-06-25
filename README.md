@@ -32,12 +32,11 @@ Dev note: to use with uvx, we need to create a package and publish it to PyPI.
 
 ## Available Tools
 
-- create: Create a new Microsoft Access database, copying the empty.mdb template.
-- list: List all active databases available in the server.
-- connect: Connect to a Microsoft Access database, from its path.
-- query: Execute a SQL query to retrieve data from a database.
-- update: Execute a SQL query to insert/update/delete data in a database.
-- disconnect: Disconnect from a database, closing the connection.
+Database management:
+- `list`: List all active databases available in the server.
+- `create`: Create a new database file (for Microsoft Access, copies the empty.mdb template).
+- `connect`: Connect to an existing database file, or creates an in-memory database if the file is not specified.
+- `disconnect`: Close a database connection. For in-memory databases, this will clear all its data.
 
 
 ## TODO
