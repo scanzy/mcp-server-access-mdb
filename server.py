@@ -87,9 +87,9 @@ def CreateDatabase(targetPath: str, ctx: Context) -> str:
 
 
 @mcp.tool(name="connect")
-def Connect(key: str, databasePath: str, ctx: Context) -> str:
+def Connect(key: str, ctx: Context, databasePath: str = "") -> str:
     """Connect to a database and store the engine under the given key, for future use.
-    If the databasePath is not specified, a new in-memory database will be created.
+    To create a temporary in-memory database, do not specify the databasePath.
     """
 
     # Check if the key already exists in the engines dictionary
@@ -163,15 +163,19 @@ def Update(key: str, sql: str, ctx: Context, parameters: dict | None = None) -> 
 
 
 @mcp.tool(name="import")
-def Import(key: str, tableName: str, csvPath: str, ctx: Context) -> str:
-    """Import data from a CSV file to the specified database connection."""
+def Import(key: str, tableName: str, csvPath: str, ctx: Context,
+           encoding: str = "", delimiter: str = "") -> str:
+    """Import data from a CSV file to the specified database connection.
+    If the table already exists, the data will be appended to it.
+    Leave encoding and delimiter empty to use autodetection.
+    """
 
     # Get the engine for the database connection
     engine = GetEngine(ctx, key)
 
-    # Autodetect encoding and separator
-    encoding = DetectEncoding(csvPath) or "utf-8"
-    delimiter = DetectSeparator(csvPath, encoding)
+    # Autodetect encoding and separator, if needed
+    if encoding  == "": encoding  = DetectEncoding(csvPath) or "utf-8"
+    if delimiter == "": delimiter = DetectSeparator(csvPath, encoding)
 
     # Load CSV into a DataFrame, handilng empty or bad formatted CSV files
     try:
@@ -182,24 +186,30 @@ def Import(key: str, tableName: str, csvPath: str, ctx: Context) -> str:
         raise FastMCPError(f"Error parsing CSV file: {e}")
 
     # Load the DataFrame into the database
-    df.to_sql(tableName, engine, index=False, if_exists="fail")
+    df.to_sql(tableName, engine, index=False, if_exists="append")
     # TODO: log the operation
-    return f"CSV file analysis: encoding={encoding}, delimiter={delimiter}\n" \
-        f"CSV file loaded as table '{tableName}' into database '{key}'."
+    return f"CSV file loaded as table '{tableName}' into database '{key}'." \
+        f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
+        f"Import options: encoding={encoding}, delimiter={delimiter}."
 
 
 @mcp.tool(name="export")
-def Export(key: str, tableName: str, csvPath: str, ctx: Context) -> str:
-    """Export data from a database table to a CSV file."""
+def Export(key: str, tableName: str, csvPath: str, ctx: Context,
+           encoding: str = "utf-8", delimiter: str = ",") -> str:
+    """Export all data from a database table to a CSV file.
+    To export a specific subset of data, first create a temporary table with the desired data.
+    """
 
     # Get the data from the database
     engine = GetEngine(ctx, key)
     df = pd.read_sql_table(tableName, engine)
 
     # Save the data to the CSV file
-    df.to_csv(csvPath, index=False)
+    df.to_csv(csvPath, index=False, encoding=encoding, sep=delimiter)
     # TODO: log the operation
-    return f"Data exported from table '{tableName}' in database '{key}' to CSV file '{csvPath}'."
+    return f"Data exported from table '{tableName}' in database '{key}' to CSV file '{csvPath}'." \
+        f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
+        f"Export options: encoding={encoding}, delimiter={delimiter}."
 
 
 
@@ -230,6 +240,24 @@ def DetectSeparator(csvPath: str, encoding: str) -> str:
             return csv.Sniffer().sniff(sample).delimiter
         except Exception as e:
             return ","
+
+
+@dataclass(frozen=True)
+class CSVFileOperation:
+    """Dataclass to hold information about an operation performed on a CSV file."""
+
+    # what and when (timestamp in ISO format)
+    action: Literal["import", "export"]
+    when: str
+
+    # file information
+    path: str
+    encoding: str
+    delimiter: str
+
+    # database information
+    key: str
+    tableName: str
 
 
 
