@@ -46,6 +46,24 @@ Data management:
 - `export`: Exports data from a database table to a CSV file.
 
 
+## Project structure
+
+Main files:
+- [`server.py`](/server.py): MCP server implementation.
+
+Tests:
+- [`test_tools.py`](/test_tools.py): Functions to test individual MCP tools.
+- [`test_mcp.py`](/test_mcp.py): Tests all MCP tools in a typical workflow.
+
+Documentation:
+- [`README.md`](/README.md): This file, with general information about the project.
+- [`LICENSE`](/LICENSE): MIT license.
+
+Scouting scripts, used in the first stages to develop basic functionality:
+- [`scouting_mdb.py`](/scouting_mdb.py): SQLAlchemy and pandas to interact with Microsoft Access databases.
+- [`scouting_csv.py`](/scouting_csv.py): SQLAlchemy and pandas to interact with CSV files.
+
+
 ## TODO
 
 - [x] Add tool to create a new database, copying empty.mdb to the specified path.
