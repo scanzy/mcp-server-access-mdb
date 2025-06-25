@@ -195,17 +195,18 @@ def Import(key: str, tableName: str, csvPath: str, ctx: Context,
 
 @mcp.tool(name="export")
 def Export(key: str, tableName: str, csvPath: str, ctx: Context,
-           encoding: str = "utf-8", delimiter: str = ",") -> str:
+        overwrite: bool = False, encoding: str = "utf-8", delimiter: str = ",") -> str:
     """Export all data from a database table to a CSV file.
     To export a specific subset of data, first create a temporary table with the desired data.
+    When overwriting a file, use the same encoding and delimiter as the original file, if possible.
     """
 
     # Get the data from the database
     engine = GetEngine(ctx, key)
     df = pd.read_sql_table(tableName, engine)
 
-    # Save the data to the CSV file
-    df.to_csv(csvPath, index=False, encoding=encoding, sep=delimiter)
+    # Save the data to the CSV file, allowing overwriting if needed
+    df.to_csv(csvPath, index=False, mode="w" if overwrite else "x", encoding=encoding, sep=delimiter)
     # TODO: log the operation
     return f"Data exported from table '{tableName}' in database '{key}' to CSV file '{csvPath}'." \
         f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
