@@ -1,10 +1,11 @@
-"""MCP server for Microsoft Access databases."""
+"""MCP server for Microsoft Access databases and CSV files."""
 
 import shutil
-from typing import Any
+from typing import Any, Literal
 from pathlib import Path
 from dataclasses import dataclass, field
 
+import csv
 import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy.engine import URL
@@ -14,7 +15,7 @@ from fastmcp.exceptions import FastMCPError
 
 
 # Initialize the MCP server for protocol-level communication
-mcp = FastMCP("MS Access Database", dependencies=["pandas", "sqlalchemy-access"])
+mcp = FastMCP("MS Access Databases and CSV Files", dependencies=["pandas", "sqlalchemy-access"])
 
 # Set up a dictionary to hold DBConnection objects for different database connections
 setattr(mcp, "connections", {})
@@ -31,15 +32,7 @@ class DBConnection:
 
     key: str            # Unique identifier for the connection
     engine: sa.Engine   # SQLAlchemy engine for the connection
-    path: str           # Path to the database file, with extension
-
-    # Additional data that can be stored with the connection
-    metadata: dict[str, str] = field(default_factory=dict)
-
-    @property
-    def type(self) -> str:
-        """Type of the database connection, determined by the file extension."""
-        return self.path.split(".")[-1].lower()
+    path: str           # Path to the database file
 
 
 
@@ -167,6 +160,76 @@ def Update(key: str, sql: str, ctx: Context, parameters: dict | None = None) -> 
     with GetEngine(ctx, key).begin() as conn:
         conn.execute(sa.text(sql), parameters or {})
         return True
+
+
+@mcp.tool(name="import")
+def Import(key: str, tableName: str, csvPath: str, ctx: Context) -> str:
+    """Import data from a CSV file to the specified database connection."""
+
+    # Get the engine for the database connection
+    engine = GetEngine(ctx, key)
+
+    # Autodetect encoding and separator
+    encoding = DetectEncoding(csvPath) or "utf-8"
+    delimiter = DetectSeparator(csvPath, encoding)
+
+    # Load CSV into a DataFrame, handilng empty or bad formatted CSV files
+    try:
+        df = pd.read_csv(csvPath, delimiter=delimiter, encoding=encoding)
+    except pd.errors.EmptyDataError:
+        raise FastMCPError("No data found in CSV file, table has not been created.")
+    except pd.errors.ParserError as e:
+        raise FastMCPError(f"Error parsing CSV file: {e}")
+
+    # Load the DataFrame into the database
+    df.to_sql(tableName, engine, index=False, if_exists="fail")
+    # TODO: log the operation
+    return f"CSV file analysis: encoding={encoding}, delimiter={delimiter}\n" \
+        f"CSV file loaded as table '{tableName}' into database '{key}'."
+
+
+@mcp.tool(name="export")
+def Export(key: str, tableName: str, csvPath: str, ctx: Context) -> str:
+    """Export data from a database table to a CSV file."""
+
+    # Get the data from the database
+    engine = GetEngine(ctx, key)
+    df = pd.read_sql_table(tableName, engine)
+
+    # Save the data to the CSV file
+    df.to_csv(csvPath, index=False)
+    # TODO: log the operation
+    return f"Data exported from table '{tableName}' in database '{key}' to CSV file '{csvPath}'."
+
+
+
+# CSV UTILITIES
+# ============
+
+
+
+def DetectEncoding(filePath: str) -> str:
+    """Autodetect the encoding of a CSV file (uses chardet if available).
+    Returns an empty string if chardet is not installed or encoding cannot be detected.
+    """
+    try:
+        import chardet
+        with open(filePath, 'rb') as f:
+            return chardet.detect(f.read(4096))["encoding"] or ""
+    except ImportError:
+        return ""
+
+
+def DetectSeparator(csvPath: str, encoding: str) -> str:
+    """Autodetect the separator of a CSV file using csv.Sniffer.
+    Returns a comma (",") if no separator can be detected.
+    """
+    with open(csvPath, 'r', encoding=encoding) as f:
+        sample = f.read(2048)
+        try:
+            return csv.Sniffer().sniff(sample).delimiter
+        except Exception as e:
+            return ","
 
 
 

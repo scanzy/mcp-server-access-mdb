@@ -3,12 +3,16 @@ This script demonstrates how to use pandas to
 query and update a CSV file as a database using SQLAlchemy (in-memory SQLite).
 
 The script:
-- Autodetects separator and encoding
-- Loads CSV data into a SQLAlchemy in-memory database
-- Creates a new table
-- Adds sample data to the table
-- Prints the data in the table
-- Deletes the table
+- Creates a test CSV file
+- Loads data into the database
+- Queries the database
+- Updates the database
+- Queries the database again
+- Saves the database to a CSV file
+- Clears the database
+- Loads the CSV file again
+- Queries the database
+- Deletes the CSV file
 """
 
 import csv
