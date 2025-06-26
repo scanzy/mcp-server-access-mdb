@@ -15,7 +15,7 @@ from fastmcp.exceptions import FastMCPError
 
 
 # Initialize the MCP server for protocol-level communication
-mcp = FastMCP("MS Access Databases and CSV Files", dependencies=["pandas", "sqlalchemy-access"])
+mcp = FastMCP("MS Access Databases and CSV Files", dependencies=["pandas", "sqlalchemy-access", "openpyxl"])
 
 # Set up a dictionary to hold DBConnection objects for different database connections
 setattr(mcp, "connections", {})
@@ -162,8 +162,8 @@ def Update(key: str, sql: str, ctx: Context, parameters: dict | None = None) -> 
         return True
 
 
-@mcp.tool(name="import")
-def Import(key: str, tableName: str, csvPath: str, ctx: Context,
+@mcp.tool(name="import_csv")
+def ImportCSV(key: str, tableName: str, csvPath: str, ctx: Context,
            encoding: str = "", delimiter: str = "") -> str:
     """Import data from a CSV file to the specified database connection.
     If the table already exists, the data will be appended to it.
@@ -193,8 +193,30 @@ def Import(key: str, tableName: str, csvPath: str, ctx: Context,
         f"Import options: encoding={encoding}, delimiter={delimiter}."
 
 
-@mcp.tool(name="export")
-def Export(key: str, tableName: str, csvPath: str, ctx: Context,
+@mcp.tool(name="import_excel")
+def ImportExcel(key: str, tableName: str, excelPath: str, sheetName: str, ctx: Context) -> str:
+    """Import data from an excel file to the specified database connection.
+    If the destination table already exists, the data will be appended to it.
+    """
+
+    # Get the engine for the database connection
+    engine = GetEngine(ctx, key)
+
+    # Load CSV into a DataFrame, handilng empty or bad formatted CSV files
+    try:
+        df = pd.read_excel(excelPath, sheet_name=sheetName)
+    except Exception as e:
+        raise FastMCPError(f"Error parsing excel file: {e}")
+
+    # Load the DataFrame into the database
+    df.to_sql(tableName, engine, index=False, if_exists="append")
+    # TODO: log the operation
+    return f"Excel file loaded as table '{tableName}' into database '{key}'." \
+        f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
+
+
+@mcp.tool(name="export_csv")
+def ExportCSV(key: str, tableName: str, csvPath: str, ctx: Context,
         overwrite: bool = False, encoding: str = "utf-8", delimiter: str = ",") -> str:
     """Export all data from a database table to a CSV file.
     To export a specific subset of data, first create a temporary table with the desired data.

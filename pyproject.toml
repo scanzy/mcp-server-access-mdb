@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "chardet>=5.2.0",
     "fastmcp>=2.8.1",
+    "openpyxl>=3.1.5",
     "pandas>=2.3.0",
     "sqlalchemy-access>=1.1.3",
 ]

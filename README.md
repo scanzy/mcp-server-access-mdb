@@ -20,6 +20,7 @@ To use this MCP server with Claude Desktop (or any other MCP host), clone the re
         "--with", "fastmcp",
         "--with", "pandas",
         "--with", "sqlalchemy-access",
+        "--with", "openpyxl",
         "fastmcp", "run",
         "path/to/repo/server.py"
       ],
@@ -42,8 +43,10 @@ Database management:
 Data management:
 - `query`: Execute a SQL query to retrieve data from a database.
 - `update`: Execute a SQL query to insert/update/delete data in a database.
-- `import`: Imports data from a CSV file into a database table.
-- `export`: Exports data from a database table to a CSV file.
+- `import_csv`: Imports data from a CSV file into a database table.
+- `import_excel`: Imports data from an Excel file into a database table.
+- `export_csv`: Exports data from a database table to a CSV file.
+- `export_excel`: Exports data from a database table to an Excel file.
 
 
 ## Project structure
@@ -70,6 +73,7 @@ Scouting scripts, used in the first stages to develop basic functionality:
 - [x] Add the ability to connect to multiple databases at the same time.
 - [x] Add tool to list all tables in the database.
 - [x] Add tools to import/export data from/to CSV files.
+- [ ] Add tools to import/export data from/to Excel files.
 - [ ] Add tool to remember imported/exported CSV files.
 - [ ] Add prompt to ask AI to read chunks of data, to avoid large responses.
 - [ ] Add prompt to guide AI asking info to the user about the database.
