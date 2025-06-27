@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from fastmcp import Client
+from mcp.types import TextContent
 
 
 async def TestCreateDatabase(mcpClient: Client, dbPath: str) -> None:
@@ -58,8 +59,6 @@ async def TestInsert(mcpClient: Client, key: str) -> None:
 async def TestQuery(mcpClient: Client, key: str) -> None:
     results = await mcpClient.call_tool("query", {"key": key, "sql": "SELECT * FROM TestTable"})
     print("TestTable contents:")
-
-    from mcp.types import TextContent
     assert isinstance(results[0], TextContent)
     print(results[0].text)
 
@@ -74,14 +73,16 @@ async def TestDisconnect(mcpClient: Client, key: str) -> None:
     print("Disconnected from database.")
 
 
-async def TestExport(mcpClient: Client, key: str, csvPath: str) -> None:
-    await mcpClient.call_tool("export", {"key": key, "tableName": "TestTable", "csvPath": csvPath})
+async def TestExportCSV(mcpClient: Client, key: str, csvPath: str) -> None:
+    await mcpClient.call_tool("export_csv", {"key": key, "dbTableName": "TestTable", "csvPath": csvPath})
     print(f"Data exported to {csvPath}")
 
 
-async def TestImport(mcpClient: Client, key: str, csvPath: str) -> None:
-    result = await mcpClient.call_tool("import", {"key": key, "tableName": "TestTable", "csvPath": csvPath})
+async def TestImportCSV(mcpClient: Client, key: str, csvPath: str) -> None:
+    result = await mcpClient.call_tool("import_csv", {"key": key, "dbTableName": "TestTable", "csvPath": csvPath})
     print(f"Data imported from {csvPath} to TestTable")
+    assert isinstance(result[0], TextContent)
+    print(f"Import details: {result[0].text}")
     
     from mcp.types import TextContent
     if result and isinstance(result[0], TextContent):

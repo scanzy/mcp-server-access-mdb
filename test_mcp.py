@@ -67,13 +67,13 @@ async def PerformTest1(mcpClient: Client, dbPath: str, csvPath: str, key: str) -
         await TestQuery(mcpClient, key)
 
         # 2. Database export operations
-        await TestExport(mcpClient, key, csvPath)
+        await TestExportCSV(mcpClient, key, csvPath)
         await TestDropTable(mcpClient, key)
         await TestDisconnect(mcpClient, key)
 
         # 3. Database import operations
         await TestConnect(mcpClient, key, dbPath)
-        await TestImport(mcpClient, key, csvPath)
+        await TestImportCSV(mcpClient, key, csvPath)
         await TestDeleteCSV(csvPath)
         await TestQuery(mcpClient, key)
 
@@ -116,8 +116,8 @@ async def PerformTest2(mcpClient: Client,
         await TestQuery(mcpClient, key2)
 
         # 2. Database export operations
-        await TestExport(mcpClient, key1, csvPath1)
-        await TestExport(mcpClient, key2, csvPath2)
+        await TestExportCSV(mcpClient, key1, csvPath1)
+        await TestExportCSV(mcpClient, key2, csvPath2)
 
         await TestDropTable(mcpClient, key1)
         await TestDropTable(mcpClient, key2)
@@ -129,8 +129,8 @@ async def PerformTest2(mcpClient: Client,
         await TestConnect(mcpClient, key1, dbPath1)
         await TestConnect(mcpClient, key2, dbPath2)
 
-        await TestImport(mcpClient, key1, csvPath1)
-        await TestImport(mcpClient, key2, csvPath2)
+        await TestImportCSV(mcpClient, key1, csvPath1)
+        await TestImportCSV(mcpClient, key2, csvPath2)
 
         await TestDeleteCSV(csvPath1)
         await TestDeleteCSV(csvPath2)

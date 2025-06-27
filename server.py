@@ -113,6 +113,11 @@ def Connect(key: str, ctx: Context, databasePath: str = "") -> str:
     try:
         # Create a new SQLAlchemy engine and store it
         engine = sa.create_engine(connectionUrl)
+
+        # test the connection
+        with engine.connect() as conn:
+            conn.execute(sa.text("SELECT 1"))
+
         connections[key] = DBConnection(key=key, engine=engine, path=databasePath)
         return f"Successfully connected to the database with key '{key}'."
 
@@ -163,7 +168,7 @@ def Update(key: str, sql: str, ctx: Context, parameters: dict | None = None) -> 
 
 
 @mcp.tool(name="import_csv")
-def ImportCSV(key: str, tableName: str, csvPath: str, ctx: Context,
+def ImportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
            encoding: str = "", delimiter: str = "") -> str:
     """Import data from a CSV file to the specified database connection.
     If the table already exists, the data will be appended to it.
@@ -186,9 +191,9 @@ def ImportCSV(key: str, tableName: str, csvPath: str, ctx: Context,
         raise FastMCPError(f"Error parsing CSV file: {e}")
 
     # Load the DataFrame into the database
-    df.to_sql(tableName, engine, index=False, if_exists="append")
+    df.to_sql(dbTableName, engine, index=False, if_exists="append")
     # TODO: log the operation
-    return f"CSV file loaded as table '{tableName}' into database '{key}'." \
+    return f"CSV file loaded as table '{dbTableName}' into database '{key}'." \
         f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
         f"Import options: encoding={encoding}, delimiter={delimiter}."
 
@@ -216,7 +221,7 @@ def ImportExcel(key: str, tableName: str, excelPath: str, sheetName: str, ctx: C
 
 
 @mcp.tool(name="export_csv")
-def ExportCSV(key: str, tableName: str, csvPath: str, ctx: Context,
+def ExportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
         overwrite: bool = False, encoding: str = "utf-8", delimiter: str = ",") -> str:
     """Export all data from a database table to a CSV file.
     To export a specific subset of data, first create a temporary table with the desired data.
@@ -225,12 +230,12 @@ def ExportCSV(key: str, tableName: str, csvPath: str, ctx: Context,
 
     # Get the data from the database
     engine = GetEngine(ctx, key)
-    df = pd.read_sql_table(tableName, engine)
+    df = pd.read_sql_table(dbTableName, engine)
 
     # Save the data to the CSV file, allowing overwriting if needed
     df.to_csv(csvPath, index=False, mode="w" if overwrite else "x", encoding=encoding, sep=delimiter)
     # TODO: log the operation
-    return f"Data exported from table '{tableName}' in database '{key}' to CSV file '{csvPath}'." \
+    return f"Data exported from table '{dbTableName}' in database '{key}' to CSV file '{csvPath}'." \
         f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
         f"Export options: encoding={encoding}, delimiter={delimiter}."
 
@@ -265,6 +270,7 @@ def DetectSeparator(csvPath: str, encoding: str) -> str:
             return ","
 
 
+# TODO: add a tool to log import/export operations
 @dataclass(frozen=True)
 class CSVFileOperation:
     """Dataclass to hold information about an operation performed on a CSV file."""
@@ -280,7 +286,7 @@ class CSVFileOperation:
 
     # database information
     key: str
-    tableName: str
+    dbTableName: str
 
 
 
