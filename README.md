@@ -46,7 +46,10 @@ Data management:
 - `import_csv`: Imports data from a CSV file into a database table.
 - `export_csv`: Exports data from a database table to a CSV file.
 - `import_excel`: Imports data from an Excel file into a database table.
-- `export_excel`: Exports data from a database table to an Excel file.
+
+Note: Excel import/export is not implemented, use haris-musa/excel-mcp-server instead.
+The main problem is tracking the index of the rows and columns in the Excel file, to correctly import/export data to the same cells, and/or insert new rows/columns.
+In addition, merged cells complicate the process, it would be too complex to implement.
 
 
 ## Project structure
@@ -73,8 +76,7 @@ Scouting scripts, used in the first stages to develop basic functionality:
 - [x] Add the ability to connect to multiple databases at the same time.
 - [x] Add tool to list all tables in the database.
 - [x] Add tools to import/export data from/to CSV files.
-- [x] Add tools to import/export data from/to Excel files.
-- [ ] Add tool to remember imported/exported CSV files.
-- [ ] Add prompt to ask AI to read chunks of data, to avoid large responses.
-- [ ] Add prompt to guide AI asking info to the user about the database.
-- [ ] Add memory support to store info about the database (.AInotes files), to retrieve it later.
+- [x] Add tools to import data from/to Excel files.
+- [x] Add prompt to guide AI asking info to the user about the database.
+- [ ] Store info about the database (.AInotes files), to retrieve it later.
+- [ ] Add tool to remember imported/exported CSV and Excel files.

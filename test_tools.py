@@ -83,10 +83,6 @@ async def TestImportCSV(mcpClient: Client, key: str, csvPath: str) -> None:
     print(f"Data imported from {csvPath} to TestTable")
     assert isinstance(result[0], TextContent)
     print(f"Import details: {result[0].text}")
-    
-    from mcp.types import TextContent
-    if result and isinstance(result[0], TextContent):
-        print(f"Import details: {result[0].text}")
 
 
 async def TestDeleteCSV(csvPath: str) -> None:

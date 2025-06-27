@@ -16,7 +16,23 @@ from fastmcp.exceptions import FastMCPError
 
 
 # Initialize the MCP server for protocol-level communication
-mcp = FastMCP("MS Access Databases and CSV Files", dependencies=["pandas", "sqlalchemy-access", "openpyxl"])
+mcp = FastMCP(
+    name="MCP Server for MS Access, Excel, CSV files",
+    dependencies=["pandas", "sqlalchemy-access", "openpyxl"],
+    instructions="""
+    This server allows you to manage MS Access databases, Excel files and CSV files.
+    With important databases, ensure there is a backup (or create it) before modifying data.
+
+    Before starting, collect additional info about the use case, and the goal of the user.
+    For complex tasks, first discuss with the user about the method to follow.
+    When working on long tasks, create a dedicated database to log operations,
+    to keep track of current status and progress.
+    
+    The server cannot discover existing tables in MS Access databases, ask the user about them.
+    To work with Excel or CSV files, create an in-memory database and load data into it.
+    To export data into Excel files, use haris-musa/excel-mcp-server instead.
+    """
+)
 
 # Set up a dictionary to hold DBConnection objects for different database connections
 setattr(mcp, "connections", {})
@@ -148,7 +164,11 @@ def Disconnect(key: str, ctx: Context) -> str:
 
 @mcp.tool(name="query")
 def Query(key: str, sql: str, ctx: Context, parameters: dict | None = None) -> list[dict]:
-    """Execute a SELECT query on the database identified by key and return results as a list of records."""
+    """Execute a SELECT query on the database identified by key and return results as a list of records.
+    Before executing a query, make sure to know the record count, and use pagination to avoid large responses.
+    IMPORTANT: Do not use this tool to discover existing tables, query system objects or schema.
+    Instead, ask the user about existing tables, their purpose, structure and content.
+    """
 
     # Use pandas to execute query and convert results to dict format
     # This automatically handles proper data type conversion
