@@ -1,7 +1,7 @@
 # Microsoft Access Database MCP Server
 
 A simple MCP server to let AI interact with Microsoft Access databases.
-Supports import/export with CSV files.
+Supports import/export with CSV and Excel files.
 
 **WARNING**: This server has full access to databases, so it can read and modify any data in it. **Use with caution** to avoid data loss!
 
@@ -44,8 +44,8 @@ Data management:
 - `query`: Execute a SQL query to retrieve data from a database.
 - `update`: Execute a SQL query to insert/update/delete data in a database.
 - `import_csv`: Imports data from a CSV file into a database table.
-- `import_excel`: Imports data from an Excel file into a database table.
 - `export_csv`: Exports data from a database table to a CSV file.
+- `import_excel`: Imports data from an Excel file into a database table.
 - `export_excel`: Exports data from a database table to an Excel file.
 
 
@@ -73,8 +73,8 @@ Scouting scripts, used in the first stages to develop basic functionality:
 - [x] Add the ability to connect to multiple databases at the same time.
 - [x] Add tool to list all tables in the database.
 - [x] Add tools to import/export data from/to CSV files.
-- [ ] Add tools to import/export data from/to Excel files.
+- [x] Add tools to import/export data from/to Excel files.
 - [ ] Add tool to remember imported/exported CSV files.
 - [ ] Add prompt to ask AI to read chunks of data, to avoid large responses.
 - [ ] Add prompt to guide AI asking info to the user about the database.
-- [ ] Add memory support to store info about the database, to retrieve it later.
+- [ ] Add memory support to store info about the database (.AInotes files), to retrieve it later.

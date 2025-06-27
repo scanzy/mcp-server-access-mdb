@@ -199,25 +199,73 @@ def ImportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
 
 
 @mcp.tool(name="import_excel")
-def ImportExcel(key: str, tableName: str, excelPath: str, sheetName: str, ctx: Context) -> str:
-    """Import data from an excel file to the specified database connection.
-    If the destination table already exists, the data will be appended to it.
+def ImportExcel(
+    key: str, 
+    dbTableName: str, 
+    dbColumnNames: list[str],
+    excelPath: str, 
+    sheetName: str, 
+    ctx: Context,
+    rowsToSkip:      list[int] | None = None,
+    columnsToImport: list[int] | None = None,
+    naValues:        list[str] | None = None,
+    dtypes:     dict[str, str] | None = None,
+) -> str:
+    """Import data from an Excel file to the specified database table.
+    If the table already exists, the data will be appended to it, otherwise it will be created.
+    Before importing, use other tools to analyze the file:
+    - read workbook metadata to discover sheet names
+    - read the first rows of the file to check its data and structure
+    - if you found empty cells, check merged cells to understand better the data structure
+    
+    Args:
+        key: Database connection key
+        dbTableName: Name of the table to create/append to
+        dbColumnNames: List of unique column names to use for the database table
+        excelPath: Path to the Excel file
+        sheetName: Name of the worksheet to read
+        rowsToSkip: List of row numbers to skip (0-indexed)
+        columnsToImport: List of indices of columns to import (0-indexed)
+        naValues: Additional strings to recognize as NaN/NULL values
+        dtypes: Optional dictionary specifying pandas data types for columns
+
+    Example:
+        ImportExcel(
+            key="my_database",
+            dbTableName="People",
+            dbColumnNames=["Name", "Age", "City"],
+            excelPath="path/to/my_excel_file.xlsx",
+            sheetName="Sheet1",
+            rowsToSkip=[0], # skip the first row
+            columnsToImport=[0, 1, 2], # import the first three columns
+            dtypes = {'Name': 'string', 'Age': 'int64', 'City': 'string'}
+        )
+    
     """
 
     # Get the engine for the database connection
     engine = GetEngine(ctx, key)
 
-    # Load CSV into a DataFrame, handilng empty or bad formatted CSV files
     try:
-        df = pd.read_excel(excelPath, sheet_name=sheetName)
-    except Exception as e:
-        raise FastMCPError(f"Error parsing excel file: {e}")
+        # Build read_excel parameters
+        read_kwargs = {
+            'sheet_name': sheetName,
+            'names': dbColumnNames,
+            'dtype': dtypes,
+            'skiprows': rowsToSkip,
+            'usecols': columnsToImport,
+            'na_values': naValues
+        }
+    
+        # Load Excel into a DataFrame, then load it into the database
+        df = pd.read_excel(excelPath, **read_kwargs)
+        df.to_sql(dbTableName, engine, index=False, if_exists="append")
 
-    # Load the DataFrame into the database
-    df.to_sql(tableName, engine, index=False, if_exists="append")
-    # TODO: log the operation
-    return f"Excel file loaded as table '{tableName}' into database '{key}'." \
-        f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
+        return f"Excel file loaded as table '{dbTableName}' into database '{key}'.\n" \
+               f"Total columns: {len(df.columns)}, Total rows: {len(df)}."
+
+    except Exception as e:
+        raise FastMCPError(f"Error parsing Excel file: {e}")
 
 
 @mcp.tool(name="export_csv")
