@@ -26,6 +26,12 @@ The following operations are performed:
 - Disconnects from the database
 - Lists the active connections again
 - Deletes the database
+
+5. Notes:
+- Writes a note to a file
+- Reads the note from the file
+- Lists the notes found in the directory
+- Deletes the note from the file
 """
 
 import asyncio
@@ -81,6 +87,12 @@ async def PerformTest1(mcpClient: Client, dbPath: str, csvPath: str, key: str) -
         await TestListConnections(mcpClient)
         await TestDisconnect(mcpClient, key)
         await TestListConnections(mcpClient)
+
+        # 5. Notes operations
+        await TestNotesReadWrite(mcpClient, dbPath or key)
+        await TestNotesList(mcpClient)
+        await TestNotesDelete(mcpClient, dbPath or key)
+        await TestNotesList(mcpClient)
         print("Test 1 completed successfully.")
 
     except FastMCPError as e:
@@ -144,6 +156,18 @@ async def PerformTest2(mcpClient: Client,
         await TestListConnections(mcpClient)
         await TestDisconnect(mcpClient, key2)        
         await TestListConnections(mcpClient)
+
+        # 5. Notes operations
+        await TestNotesReadWrite(mcpClient, dbPath1 or key1)
+        await TestNotesList(mcpClient)
+    
+        await TestNotesReadWrite(mcpClient, dbPath2 or key2)
+        await TestNotesList(mcpClient)
+    
+        await TestNotesDelete(mcpClient, dbPath1 or key1)
+        await TestNotesList(mcpClient)
+
+        await TestNotesDelete(mcpClient, dbPath2 or key2)
         print("Test 2 completed successfully.")
 
     except FastMCPError as e:

@@ -3,14 +3,15 @@
 import shutil
 from typing import Any
 from pathlib import Path
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy.engine import URL
 
-from fastmcp import FastMCP, Context
+from fastmcp import Context
 from fastmcp.exceptions import FastMCPError
+from tools_notes import ReadNotes
 
 
 
@@ -76,8 +77,9 @@ def CreateDatabase(targetPath: str, ctx: Context) -> str:
         raise FastMCPError(f"Failed to create database: {e}")
 
 
-def Connect(key: str, ctx: Context, databasePath: str = "") -> str:
+def Connect(key: str, ctx: Context, databasePath: str = "", includeNotes: bool = False) -> str:
     """Connect to a database and store the engine under the given key, for future use.
+    If includeNotes is True, reads notes associated with the database (same name, with .AInotes.* suffix).
     To create a temporary in-memory database, do not specify the databasePath.
     """
 
@@ -107,8 +109,19 @@ def Connect(key: str, ctx: Context, databasePath: str = "") -> str:
         with engine.connect() as conn:
             conn.execute(sa.text("SELECT 1"))
 
+        # store the connection
         connections[key] = DBConnection(key=key, engine=engine, path=databasePath)
-        return f"Successfully connected to the database with key '{key}'."
+        message = f"Successfully connected to the database with key '{key}'."
+        
+        # read notes associated with the database
+        if includeNotes:
+            try:
+                notes = ReadNotes(databasePath)
+                message += f"\nNotes: {notes}"
+            except FastMCPError as e:
+                message += f"\nError reading notes: {e}"
+        
+        return message
 
     except Exception as e:
         raise FastMCPError(f"Error connecting to database: {str(e)}")

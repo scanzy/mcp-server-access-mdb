@@ -1,7 +1,7 @@
 # Microsoft Access Database MCP Server
 
 A simple MCP server to let AI interact with Microsoft Access databases.
-Supports import/export with CSV and Excel files.
+Supports import/export with CSV and Excel files, and store human-readable notes about files.
 
 **WARNING**: This server has full access to databases, so it can read and modify any data in it. **Use with caution** to avoid data loss!
 
@@ -47,6 +47,10 @@ Data management:
 - `export_csv`: Exports data from a database table to a CSV file.
 - `import_excel`: Imports data from an Excel file into a database table.
 
+Notes management:
+- `read_notes`: Reads notes from the specified file, or discovers notes in the specified directory.
+- `write_notes`: Writes notes to the specified file, or linked to the specified database.
+
 Note: Excel import/export is not implemented, use haris-musa/excel-mcp-server instead.
 The main problem is tracking the index of the rows and columns in the Excel file, to correctly import/export data to the same cells, and/or insert new rows/columns.
 In addition, merged cells complicate the process, it would be too complex to implement.
@@ -78,5 +82,5 @@ Scouting scripts, used in the first stages to develop basic functionality:
 - [x] Add tools to import/export data from/to CSV files.
 - [x] Add tools to import data from/to Excel files.
 - [x] Add prompt to guide AI asking info to the user about the database.
-- [ ] Store info about the database (.AInotes files), to retrieve it later.
+- [x] Store info about files (.AInotes files), to retrieve it later.
 - [ ] Add tool to remember imported/exported CSV and Excel files.
