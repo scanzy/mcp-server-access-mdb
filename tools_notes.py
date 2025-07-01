@@ -15,10 +15,10 @@ def SearchNotes(directory: Path, fileNameFilter: str = "*") -> list[Path]:
     return [file for file in list(directory.glob(fileNameFilter)) if file.is_file()]    
     
 
-def ReadNotes(fileOrDirectory: str = "") -> list[dict[str, str]]:
+def ReadNotes(fileOrDirectory: str = "", encoding: str = "utf-8") -> list[dict[str, str]]:
     """Specify a note file (*.AInotes.*) to read it, or a directory to list all notes files in it.
     Specify the path of the database file to read notes associated with it (same name, with .AInotes.* suffix).
-    Always use absolute paths, except for global notes files (example: "global.AInotes.txt").
+    Always use absolute paths, except for global notes files (example: general info about all projects).
     If you find long notes (more than 5000 characters), consider splitting them into multiple files.
     """
 
@@ -42,16 +42,16 @@ def ReadNotes(fileOrDirectory: str = "") -> list[dict[str, str]]:
 
     # direct note file: read it
     try:
-        return [{"path": path.name, "content": path.read_text()}]
+        return [{"path": path.name, "content": path.read_text(encoding=encoding)}]
     except Exception as e:
         raise FastMCPError(f"Error reading notes from '{path}': {e}")
 
     
-def WriteNotes(filePath: str, content: str) -> str:
+def WriteNotes(filePath: str, content: str, encoding: str = "utf-8") -> str:
     """Write notes to a note file (*.AInotes.*). Specify the path of the note file to write.
-    If '.AInotes' is not in the path, '.AInotes.txt' will be appended automatically.
+    If '.AInotes' is not in the path, '.AInotes.md' will be appended automatically.
     Recommended: use database file names to create associated notes (my_database.mdb -> 'my_database.AInotes.txt').
-    Always use absolute paths, except for global notes files (example: "global.AInotes.txt").
+    Always use absolute paths, except for global notes files (example: general info about all projects).
     Keep note files concise (about 5000 characters max) but complete, without repetitions.
     For complex databases, organize notes into multiple files if needed (my_database.mdb.tables.AInotes.txt').
     For such cases, always keep a main note file, describing which info is stored in which file.
@@ -60,12 +60,12 @@ def WriteNotes(filePath: str, content: str) -> str:
 
     # add .AInotes.* suffix to the path, if not present
     if ".AInotes" not in Path(filePath).suffixes:
-        filePath = filePath + ".AInotes.txt"
+        filePath = filePath + ".AInotes.md"
 
     # update or delete the note file
     try:
         if content:
-            Path(filePath).write_text(content)
+            Path(filePath).write_text(content, encoding=encoding)
             return f"Notes file '{filePath}' created/updated."
         else:
             Path(filePath).unlink()

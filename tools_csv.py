@@ -42,7 +42,7 @@ def ImportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
     # TODO: log the operation
     return f"CSV file loaded as table '{dbTableName}' into database '{key}'." \
         f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
-        f"Import options: encoding={encoding}, delimiter={delimiter}."
+        f"Import options: encoding='{encoding}', delimiter='{delimiter}'."
 
 
 def ExportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
@@ -61,7 +61,7 @@ def ExportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
     # TODO: log the operation
     return f"Data exported from table '{dbTableName}' in database '{key}' to CSV file '{csvPath}'." \
         f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
-        f"Export options: encoding={encoding}, delimiter={delimiter}."
+        f"Export options: encoding='{encoding}', delimiter='{delimiter}'."
 
 
 
