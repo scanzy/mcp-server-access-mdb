@@ -1,6 +1,6 @@
 """Tools for importing and exporting CSV files."""
 
-from typing import Literal
+from typing import Literal, Any
 from dataclasses import dataclass
 
 import csv
@@ -15,11 +15,27 @@ from tools_database import GetEngine
 # =================
 
 
-def ImportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
-           encoding: str = "", delimiter: str = "") -> str:
+def ImportCSV(
+    key: str, dbTableName: str, csvPath: str,
+    ctx: Context,
+
+    # CURSOR IDE gives error for union types, so we use Any as a workaround
+    columnsToImport: list[Any] | None = None, # list[int] | list[str]
+
+    dbColumnNames: list[str] | None = None,
+    dtype:    dict[str, str] | None = None,
+    encoding:  str = "",
+    delimiter: str = "",
+) -> str:
     """Import data from a CSV file to the specified database connection.
     If the table already exists, the data will be appended to it.
-    Leave encoding and delimiter empty to use autodetection.
+
+    Optional arguments:
+        columnsToImport: names or list of indices (0-indexed) of columns to import 
+        dbColumnNames: list of column names for database, defaults to CSV column names
+        dtypes: dictionary specifying pandas data types for database columns
+        encoding: encoding of the CSV file, leave empty to autodetect (default: utf-8)
+        delimiter: separator of the CSV file, leave empty to autodetect (default: ",")
     """
 
     # Get the engine for the database connection
@@ -32,7 +48,16 @@ def ImportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
 
     # Load CSV into a DataFrame, handilng empty or bad formatted CSV files
     try:
-        df = pd.read_csv(csvPath, delimiter=delimiter, encoding=encoding)
+        # Build read_csv parameters
+        read_kwargs = {
+            'usecols': columnsToImport,
+            'names': dbColumnNames,
+            'header': 0,
+            'dtype': dtype,
+            'encoding': encoding,
+            'delimiter': delimiter,
+        }
+        df = pd.read_csv(csvPath, **read_kwargs)
     except pd.errors.EmptyDataError:
         raise FastMCPError("No data found in CSV file, table has not been created.")
     except pd.errors.ParserError as e:
@@ -58,7 +83,13 @@ def ExportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
     df = pd.read_sql_table(dbTableName, engine)
 
     # Save the data to the CSV file, allowing overwriting if needed
-    df.to_csv(csvPath, index=False, mode="w" if overwrite else "x", encoding=encoding, sep=delimiter)
+    save_kwargs = {
+        "index": False,
+        "mode": "w" if overwrite else "x",
+        "encoding": encoding,
+        "sep": delimiter,
+    }
+    df.to_csv(csvPath, **save_kwargs)
     # TODO: log the operation
     return f"Data exported from table '{dbTableName}' in database '{key}' to CSV file '{csvPath}'. \n" \
         f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
