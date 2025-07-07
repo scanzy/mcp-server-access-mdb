@@ -77,9 +77,10 @@ def CreateDatabase(targetPath: str, ctx: Context) -> str:
         raise FastMCPError(f"Failed to create database: {e}")
 
 
-def Connect(key: str, ctx: Context, databasePath: str = "", includeNotes: bool = False) -> str:
+def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = False) -> str:
     """Connect to a database and store the engine under the given key, for future use.
-    If includeNotes is True, reads notes associated with the database (same name, with .AInotes.* suffix).
+    If readNotes is True, reads notes associated with the database (same name, with .AInotes.* suffix).
+    If you already read the notes, do not read them again to go faster.
     To create a temporary in-memory database, do not specify the databasePath.
     """
 
@@ -114,7 +115,7 @@ def Connect(key: str, ctx: Context, databasePath: str = "", includeNotes: bool =
         message = f"Successfully connected to the database with key '{key}'."
         
         # read notes associated with the database
-        if includeNotes:
+        if readNotes:
             try:
                 notes = ReadNotes(databasePath)
                 message += f"\nNotes: {notes}"
