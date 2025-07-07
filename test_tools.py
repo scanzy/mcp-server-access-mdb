@@ -57,7 +57,8 @@ async def TestCreateTable(mcpClient: Client, key: str) -> None:
         CREATE TABLE TestTable (
             ID INT,
             Name VARCHAR(255),
-            Age INT
+            Age INT,
+            Emoji VARCHAR(10)
         )
     """
     await mcpClient.call_tool("update", {"key": key, "sql": createTableSql})
@@ -65,8 +66,10 @@ async def TestCreateTable(mcpClient: Client, key: str) -> None:
 
 
 async def TestInsert(mcpClient: Client, key: str) -> None:
-    await mcpClient.call_tool("update", {"key": key, "sql": "INSERT INTO TestTable (ID, Name, Age) VALUES (1, 'John', 30)"})
-    await mcpClient.call_tool("update", {"key": key, "sql": "INSERT INTO TestTable (ID, Name, Age) VALUES (2, 'Jane', 25)"})
+    sql1 = "INSERT INTO TestTable (ID, Name, Age, Emoji) VALUES (1, 'John', 30, '😀')"
+    sql2 = "INSERT INTO TestTable (ID, Name, Age, Emoji) VALUES (2, 'Jane', 25, '🚀')"
+    await mcpClient.call_tool("update", {"key": key, "sql": sql1})
+    await mcpClient.call_tool("update", {"key": key, "sql": sql2})
     print("Sample data inserted.")
 
 
@@ -88,12 +91,14 @@ async def TestDropTable(mcpClient: Client, key: str) -> None:
 
 
 async def TestExportCSV(mcpClient: Client, key: str, csvPath: str) -> None:
-    await mcpClient.call_tool("export_csv", {"key": key, "dbTableName": "TestTable", "csvPath": csvPath})
+    await mcpClient.call_tool("export_csv",
+        {"key": key, "dbTableName": "TestTable", "csvPath": csvPath, "encoding": "utf-8"})
     print(f"Data exported to {csvPath}")
 
 
 async def TestImportCSV(mcpClient: Client, key: str, csvPath: str) -> None:
-    result = await mcpClient.call_tool("import_csv", {"key": key, "dbTableName": "TestTable", "csvPath": csvPath})
+    result = await mcpClient.call_tool("import_csv",
+        {"key": key, "dbTableName": "TestTable", "csvPath": csvPath, "encoding": "utf-8"})
     print(f"Data imported from {csvPath} to TestTable")
     assert isinstance(result[0], TextContent)
     print(f"Import details: {result[0].text}")
