@@ -168,6 +168,7 @@ async def PerformTest2(mcpClient: Client,
         await TestNotesList(mcpClient)
 
         await TestNotesDelete(mcpClient, dbPath2 or key2)
+        await TestNotesList(mcpClient)
         print("Test 2 completed successfully.")
 
     except FastMCPError as e:

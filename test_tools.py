@@ -135,9 +135,13 @@ async def TestNotesReadWrite(mcpClient: Client, filePath: str) -> None:
 
 async def TestNotesList(mcpClient: Client, directory: str = "") -> None:
     readNotes = await mcpClient.call_tool("read_notes", {"fileOrDirectory": directory})
-    print(f"Notes in directory '{directory}':")
-    assert isinstance(readNotes[0], TextContent)
-    print(readNotes[0].text)
+    assert isinstance(readNotes, list)
+    if len(readNotes) > 0:
+        print(f"Notes in directory '{directory}':")
+        assert isinstance(readNotes[0], TextContent)
+        print(readNotes[0].text)
+    else:
+        print(f"No notes found in directory '{directory}'.")
 
 
 async def TestNotesDelete(mcpClient: Client, filePath: str) -> None:
