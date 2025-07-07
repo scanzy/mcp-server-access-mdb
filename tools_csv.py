@@ -27,7 +27,8 @@ def ImportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
 
     # Autodetect encoding and separator, if needed
     if encoding  == "": encoding  = DetectEncoding(csvPath) or "utf-8"
-    if delimiter == "": delimiter = DetectSeparator(csvPath, encoding)
+    if delimiter == "": delimiter = DetectSeparator(csvPath, encoding) or ","
+
 
     # Load CSV into a DataFrame, handilng empty or bad formatted CSV files
     try:
@@ -40,7 +41,7 @@ def ImportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
     # Load the DataFrame into the database
     df.to_sql(dbTableName, engine, index=False, if_exists="append")
     # TODO: log the operation
-    return f"CSV file loaded as table '{dbTableName}' into database '{key}'." \
+    return f"CSV file loaded as table '{dbTableName}' into database '{key}'. \n" \
         f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
         f"Import options: encoding='{encoding}', delimiter='{delimiter}'."
 
@@ -59,7 +60,7 @@ def ExportCSV(key: str, dbTableName: str, csvPath: str, ctx: Context,
     # Save the data to the CSV file, allowing overwriting if needed
     df.to_csv(csvPath, index=False, mode="w" if overwrite else "x", encoding=encoding, sep=delimiter)
     # TODO: log the operation
-    return f"Data exported from table '{dbTableName}' in database '{key}' to CSV file '{csvPath}'." \
+    return f"Data exported from table '{dbTableName}' in database '{key}' to CSV file '{csvPath}'. \n" \
         f"Total columns: {len(df.columns)}, Total rows: {len(df)}.\n" \
         f"Export options: encoding='{encoding}', delimiter='{delimiter}'."
 
@@ -83,14 +84,14 @@ def DetectEncoding(filePath: str) -> str:
 
 def DetectSeparator(csvPath: str, encoding: str) -> str:
     """Autodetect the separator of a CSV file using csv.Sniffer.
-    Returns a comma (",") if no separator can be detected.
+    Returns an empty string if no separator can be detected.
     """
     with open(csvPath, 'r', encoding=encoding) as f:
         sample = f.read(2048)
         try:
             return csv.Sniffer().sniff(sample).delimiter
         except Exception as e:
-            return ","
+            return ""
 
 
 # TODO: add a tool to log import/export operations
