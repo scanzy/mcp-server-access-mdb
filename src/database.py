@@ -11,7 +11,7 @@ from sqlalchemy.engine import URL
 
 from fastmcp import Context
 from fastmcp.exceptions import FastMCPError
-from tools_notes import ReadNotes
+from src.notes import ReadNotes
 
 
 
@@ -60,7 +60,7 @@ def CreateDatabase(targetPath: str, ctx: Context) -> str:
     """Create a new MS Access database by copying empty.mdb to the specified path."""
 
     # Ensure the empty template exists
-    emptyTemplate = Path(__file__).parent / "empty.mdb"
+    emptyTemplate = Path(__file__).parent.parent / "empty.mdb"
     if not emptyTemplate.exists():
         raise FastMCPError(f"Template database not found: {emptyTemplate}")
 

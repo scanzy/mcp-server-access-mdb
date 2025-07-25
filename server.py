@@ -2,10 +2,10 @@
 
 from fastmcp import FastMCP
 
-from tools_database     import *
-from tools_csv          import *
-from tools_excel        import *
-from tools_notes        import *
+from src.database     import *
+from src.csv          import *
+from src.excel        import *
+from src.notes        import *
 
 
 # Initialize the MCP server for protocol-level communication
