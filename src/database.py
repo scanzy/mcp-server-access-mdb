@@ -1,7 +1,7 @@
 """Tools for managing database connections and data operations."""
 
 import shutil
-from typing import Any
+import typing as t
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -43,7 +43,7 @@ def GetEngine(ctx: Context, key: str) -> sa.Engine:
     return GetConnection(ctx, key).engine
 
 
-def ListConnections(ctx: Context) -> list[dict[str, Any]]:
+def ListConnections(ctx: Context) -> list[dict[str, t.Any]]:
     """List all active database connections, returning key and path for each."""
 
     connections = getattr(ctx.fastmcp, "connections", {})
@@ -147,25 +147,36 @@ def Disconnect(key: str, ctx: Context) -> str:
 # ===============
 
 
-def Query(key: str, sql: str, ctx: Context, parameters: dict | None = None) -> list[dict]:
+def Query(key: str, sql: str, ctx: Context, params: dict[str, t.Any] = {}) -> list[dict]:
     """Execute a SELECT query on the database identified by key and return results as a list of records.
-    Before executing a query, make sure to know the record count, and use pagination to avoid large responses.
+    Use backticks to escape table and column names.
+    Insert named parameters (:param_name) in the SQL query to avoid SQL injection.
+    Pass a dictionary as params to provide values for the SQL query.
+    Before executing a query, make sure to know the record count, using SELECT TOP (Access)
+    or LIMIT (SQLite) to limit the number of records returned and avoid large responses.
     IMPORTANT: Do not use this tool to discover existing tables, query system objects or schema.
     Instead, ask the user about existing tables, their purpose, structure and content.
+    To discover the structure of a table, use SELECT TOP 1 * FROM <table_name>.
     """
 
     # Use pandas to execute query and convert results to dict format
     # This automatically handles proper data type conversion
     with GetEngine(ctx, key).begin() as conn:
-        df = pd.read_sql_query(sa.text(sql), conn, params=parameters or {})
+        df = pd.read_sql_query(sa.text(sql), conn, params=params)
         return df.to_dict("records")
 
 
-def Update(key: str, sql: str, ctx: Context, parameters: dict | None = None) -> bool:
-    """Execute an UPDATE/INSERT/DELETE query on the database identified by key."""
+def Update(key: str, sql: str, ctx: Context, params: list[dict[str, t.Any]] = []) -> bool:
+    """Execute an UPDATE/INSERT/DELETE statement on the database identified by key.
+    Use backticks to escape table and column names.
+    Insert named parameters (:param_name) in the SQL statement to avoid SQL injection.
+    Pass a list of dictionaries as params to provide values for the SQL statement.
+    The tool will repeat the statement execution for each dictionary in the list.
+    If one statement fails, the entire transaction will be rolled back.
+    """
 
     # Execute the update in a transaction
     # SQLAlchemy automatically commits if no errors occur
     with GetEngine(ctx, key).begin() as conn:
-        conn.execute(sa.text(sql), parameters or {})
+        conn.execute(sa.text(sql), parameters=params)
         return True

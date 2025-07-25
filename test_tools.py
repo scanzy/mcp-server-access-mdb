@@ -65,19 +65,53 @@ async def TestCreateTable(mcpClient: Client, key: str) -> None:
     print("TestTable created")
 
 
+async def TestInsertDirect(mcpClient: Client, key: str) -> None:
+    sql = "INSERT INTO TestTable (ID, Name, Age, Emoji) VALUES (1, 'John', 30, '😀')"
+    await mcpClient.call_tool("update", {"key": key, "sql": sql})
+    print("Sample data inserted (single statement).")
+
+
+async def TestInsertSingle(mcpClient: Client, key: str) -> None:
+    sql = "INSERT INTO TestTable (ID, Name, Age, Emoji) VALUES (:id, :name, :age, :emoji)"
+    data = [{"id": 2, "name": "Jane", "age": 25, "emoji": "🚀"}]
+    await mcpClient.call_tool("update", {"key": key, "sql": sql, "params": data})
+    print("Sample data inserted (single statement).")
+
+
+async def TestInsertMany(mcpClient: Client, key: str) -> None:
+    sql = "INSERT INTO TestTable (ID, Name, Age, Emoji) VALUES (:id, :name, :age, :emoji)"
+    data = [
+        {"id": 3, "name": "Jim", "age": 40, "emoji": "🤖"},
+        {"id": 4, "name": "Jill", "age": 35, "emoji": "🐶"},
+    ]
+    await mcpClient.call_tool("update", {"key": key, "sql": sql, "params": data})
+    print("Sample data inserted (multiple statements).")
+
+
 async def TestInsert(mcpClient: Client, key: str) -> None:
-    sql1 = "INSERT INTO TestTable (ID, Name, Age, Emoji) VALUES (1, 'John', 30, '😀')"
-    sql2 = "INSERT INTO TestTable (ID, Name, Age, Emoji) VALUES (2, 'Jane', 25, '🚀')"
-    await mcpClient.call_tool("update", {"key": key, "sql": sql1})
-    await mcpClient.call_tool("update", {"key": key, "sql": sql2})
-    print("Sample data inserted.")
+    await TestInsertDirect(mcpClient, key)
+    await TestInsertSingle(mcpClient, key)
+    await TestInsertMany(mcpClient, key)
 
 
-async def TestQuery(mcpClient: Client, key: str) -> None:
+async def TestQueryDirect(mcpClient: Client, key: str) -> None:
     results = await mcpClient.call_tool("query", {"key": key, "sql": "SELECT * FROM TestTable"})
     print("TestTable contents:")
     assert isinstance(results[0], TextContent)
     print(results[0].text)
+
+
+async def TestQueryParams(mcpClient: Client, key: str) -> None:
+    sql = "SELECT * FROM TestTable WHERE ID = :id"
+    results = await mcpClient.call_tool("query", {"key": key, "sql": sql, "params": {"id": 1}})
+    print("First row contents:")
+    assert isinstance(results[0], TextContent)
+    print(results[0].text)
+
+
+async def TestQuery(mcpClient: Client, key: str) -> None:
+    await TestQueryDirect(mcpClient, key)
+    await TestQueryParams(mcpClient, key)
 
 
 async def TestDropTable(mcpClient: Client, key: str) -> None:
