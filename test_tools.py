@@ -38,10 +38,11 @@ async def TestDisconnect(mcpClient: Client, key: str) -> None:
 
 
 async def TestListConnections(mcpClient: Client) -> None:
-    connections = await mcpClient.call_tool("list")
+    result = await mcpClient.call_tool("list")
+    connections = result.content
 
+    assert isinstance(connections, list)
     print(f"Active connections: {len(connections)}")
-    from mcp.types import TextContent
     for conn in connections:
         assert isinstance(conn, TextContent)
         print(conn.text)
@@ -97,16 +98,16 @@ async def TestInsert(mcpClient: Client, key: str) -> None:
 async def TestQueryDirect(mcpClient: Client, key: str) -> None:
     results = await mcpClient.call_tool("query", {"key": key, "sql": "SELECT * FROM TestTable"})
     print("TestTable contents:")
-    assert isinstance(results[0], TextContent)
-    print(results[0].text)
+    assert isinstance(results.content[0], TextContent)
+    print(results.content[0].text)
 
 
 async def TestQueryParams(mcpClient: Client, key: str) -> None:
     sql = "SELECT * FROM TestTable WHERE ID = :id"
     results = await mcpClient.call_tool("query", {"key": key, "sql": sql, "params": {"id": 1}})
     print("First row contents:")
-    assert isinstance(results[0], TextContent)
-    print(results[0].text)
+    assert isinstance(results.content[0], TextContent)
+    print(results.content[0].text)
 
 
 async def TestQuery(mcpClient: Client, key: str) -> None:
@@ -134,8 +135,8 @@ async def TestImportCSV(mcpClient: Client, key: str, csvPath: str) -> None:
     result = await mcpClient.call_tool("import_csv",
         {"key": key, "dbTableName": "TestTable", "csvPath": csvPath, "encoding": "utf-8"})
     print(f"Data imported from {csvPath} to TestTable")
-    assert isinstance(result[0], TextContent)
-    print(f"Import details: {result[0].text}")
+    assert isinstance(result.content[0], TextContent)
+    print(f"Import details: {result.content[0].text}")
 
 
 async def TestDeleteCSV(csvPath: str) -> None:
@@ -160,8 +161,9 @@ async def TestNoteWrite(mcpClient: Client, filePath: str, note: str = "") -> Non
 
 async def TestNoteRead(mcpClient: Client, filePath: str) -> str:
     readNotes = await mcpClient.call_tool("read_notes", {"fileOrDirectory": filePath})
-    assert isinstance(readNotes[0], TextContent)
-    note = readNotes[0].text
+    assert isinstance(readNotes.content[0], TextContent)
+    note = readNotes.content[0].text
+
     print(f"Notes read from {filePath}: {note}")
     return note
 
@@ -174,11 +176,11 @@ async def TestNotesReadWrite(mcpClient: Client, filePath: str) -> None:
 
 async def TestNotesList(mcpClient: Client, directory: str = "") -> None:
     readNotes = await mcpClient.call_tool("read_notes", {"fileOrDirectory": directory})
-    assert isinstance(readNotes, list)
-    if len(readNotes) > 0:
+    assert isinstance(readNotes.content, list)
+    if len(readNotes.content) > 0:
         print(f"Notes in directory '{directory}':")
-        assert isinstance(readNotes[0], TextContent)
-        print(readNotes[0].text)
+        assert isinstance(readNotes.content[0], TextContent)
+        print(readNotes.content[0].text)
     else:
         print(f"No notes found in directory '{directory}'.")
 

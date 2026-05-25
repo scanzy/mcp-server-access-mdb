@@ -37,7 +37,7 @@ The following operations are performed:
 import asyncio
 from pathlib import Path
 from fastmcp import Client
-from fastmcp.exceptions import FastMCPError
+from fastmcp.exceptions import FastMCPError, ToolError
 
 from test_tools import *
 
@@ -103,7 +103,7 @@ async def PerformTest1(mcpClient: Client, dbPath: str, csvPath: str, key: str) -
         await TestNotesList(mcpClient)
         print("Test 1 completed successfully.")
 
-    except FastMCPError as e:
+    except (FastMCPError, ToolError) as e:
         print(f"Operation failed: {e}")
         raise e
 
@@ -179,7 +179,7 @@ async def PerformTest2(mcpClient: Client,
         await TestNotesList(mcpClient)
         print("Test 2 completed successfully.")
 
-    except FastMCPError as e:
+    except (FastMCPError, ToolError) as e:
         print(f"Operation failed: {e}")
         raise e
 

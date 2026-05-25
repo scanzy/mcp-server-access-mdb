@@ -11,7 +11,6 @@ from src.notes        import *
 # Initialize the MCP server for protocol-level communication
 mcp = FastMCP(
     name="MCP Server for MS Access, SQLite 3, Excel, CSV files",
-    dependencies=["pandas", "sqlalchemy-access", "openpyxl"],
     instructions="""
     This server allows you to manage MS Access and SQLite 3 databases, Excel files, CSV files.
 
