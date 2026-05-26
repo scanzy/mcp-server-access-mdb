@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine import URL
 
 from fastmcp import Context
-from fastmcp.exceptions import FastMCPError
+from fastmcp.exceptions import FastMCPError, ToolError
 from src.notes import ReadNotes
 
 
@@ -53,7 +53,7 @@ def GetConnection(ctx: Context, key: str) -> DBConnection:
 
     connections = getattr(ctx.fastmcp, "connections", {})
     if key not in connections:
-        raise FastMCPError(f"Not connected to the database with key '{key}'. Please use connect first.")
+        raise ToolError(f"Not connected to the database with key '{key}'. Please use connect first.")
     return connections[key]
 
 
@@ -84,7 +84,7 @@ def CreateDatabase(targetPath: str, ctx: Context, driver: DBdriver = "auto") -> 
     # Check if the target path is valid and does not already exist
     target = Path(targetPath)
     if target.exists():
-        raise FastMCPError(f"Target file already exists: {target}")
+        raise ToolError(f"Target file already exists: {target}")
 
     try:
         # For SQLite databases, create an empty database file
@@ -105,10 +105,10 @@ def CreateDatabase(targetPath: str, ctx: Context, driver: DBdriver = "auto") -> 
             return f"MS Access database created at {target}"
         
         else:
-            raise FastMCPError(f"Unsupported database file extension: {targetPath}. {GetSupportedDriversHint()}")
+            raise ToolError(f"Unsupported database file extension: {targetPath}. {GetSupportedDriversHint()}")
 
     except Exception as e:
-        raise FastMCPError(f"Failed to create database: {e}")
+        raise ToolError(f"Failed to create database: {e}")
 
 
 def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = False, driver: DBdriver = "auto") -> str:
@@ -123,7 +123,7 @@ def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = Fa
     connections = getattr(ctx.fastmcp, "connections")
     existing = connections.get(key)
     if existing:
-        raise FastMCPError(f"Database connection with key '{key}' already exists."
+        raise ToolError(f"Database connection with key '{key}' already exists."
             f"Existing connection: {existing.path}")
 
     # If no database path is specified, create an in-memory database
@@ -141,7 +141,7 @@ def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = Fa
                 driver = drv
                 break
         else:
-            raise FastMCPError(
+            raise ToolError(
                 f"Cannot autodetect database driver for file: \"{databasePath}\".\n"
                 "Please specify the driver explicitly, or use a supported file extension.\n"
                 f"{GetSupportedDriversHint()}"
@@ -176,13 +176,13 @@ def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = Fa
             try:
                 notes = ReadNotes(databasePath)
                 message += f"\nNotes: {notes}"
-            except FastMCPError as e:
+            except ToolError as e:
                 message += f"\nError reading notes: {e}"
         
         return message
 
     except Exception as e:
-        raise FastMCPError(f"Error connecting to database: {str(e)}")
+        raise ToolError(f"Error connecting to database: {str(e)}")
 
 
 def Disconnect(key: str, ctx: Context) -> str:
@@ -191,7 +191,7 @@ def Disconnect(key: str, ctx: Context) -> str:
     # Ensure the connection exists
     connections = getattr(ctx.fastmcp, "connections", {})
     if key not in connections:
-        raise FastMCPError(f"No active database connection with key '{key}' to disconnect.")
+        raise ToolError(f"No active database connection with key '{key}' to disconnect.")
     
     # Dispose of the engine
     connections[key].engine.dispose()

@@ -5,7 +5,7 @@ import openpyxl
 import pandas as pd
 
 from fastmcp import Context
-from fastmcp.exceptions import FastMCPError
+from fastmcp.exceptions import ToolError
 from src.database import GetEngine
 
 
@@ -73,7 +73,7 @@ def ImportExcel(
     # Checks excel and database column count mismatch
     if columnsToImport is not None:
         if len(dbColumnNames) != len(columnsToImport):
-            raise FastMCPError(f"Column count mismatch: {len(dbColumnNames)} "
+            raise ToolError(f"Column count mismatch: {len(dbColumnNames)} "
                 f"names provided for {len(columnsToImport)} columns")
     
     try:
@@ -115,7 +115,7 @@ def ImportExcel(
                f"Total columns: {len(df.columns)}, Total rows: {len(df)}."
 
     except Exception as e:
-        raise FastMCPError(f"Error parsing Excel file: {e}")
+        raise ToolError(f"Error parsing Excel file: {e}")
 
 
 def FillMergedCells(worksheet, df: pd.DataFrame) -> pd.DataFrame:

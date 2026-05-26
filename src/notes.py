@@ -1,7 +1,7 @@
 """Tools for managing notes associated with database files."""
 
 from pathlib import Path
-from fastmcp.exceptions import FastMCPError
+from fastmcp.exceptions import ToolError
 
 
 
@@ -44,7 +44,7 @@ def ReadNotes(fileOrDirectory: str = "", encoding: str = "utf-8") -> list[dict[s
     try:
         return [{"path": path.name, "content": path.read_text(encoding=encoding)}]
     except Exception as e:
-        raise FastMCPError(f"Error reading notes from '{path}': {e}")
+        raise ToolError(f"Error reading notes from '{path}': {e}")
 
     
 def WriteNotes(filePath: str, content: str, encoding: str = "utf-8") -> str:
@@ -71,4 +71,4 @@ def WriteNotes(filePath: str, content: str, encoding: str = "utf-8") -> str:
             Path(filePath).unlink()
             return f"Notes file '{filePath}' deleted."
     except Exception as e:
-        raise FastMCPError(f"Error writing notes to '{filePath}': {e}")
+        raise ToolError(f"Error writing notes to '{filePath}': {e}")

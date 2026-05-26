@@ -7,7 +7,7 @@ import csv
 import pandas as pd
 
 from fastmcp import Context
-from fastmcp.exceptions import FastMCPError
+from fastmcp.exceptions import ToolError
 from src.database import GetEngine
 
 
@@ -59,9 +59,9 @@ def ImportCSV(
         }
         df = pd.read_csv(csvPath, **read_kwargs)
     except pd.errors.EmptyDataError:
-        raise FastMCPError("No data found in CSV file, table has not been created.")
+        raise ToolError("No data found in CSV file, table has not been created.")
     except pd.errors.ParserError as e:
-        raise FastMCPError(f"Error parsing CSV file: {e}")
+        raise ToolError(f"Error parsing CSV file: {e}")
 
     # Load the DataFrame into the database
     df.to_sql(dbTableName, engine, index=False, if_exists="append")
