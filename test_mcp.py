@@ -68,6 +68,10 @@ async def RunTests() -> None:
         await PerformTest2(mcpClient, dbPathAccess, dbPathMemory,
             csvPath1, csvPath2, key1="test_ACCESS", key2="test_MEMORY")
 
+        # same database, two connections
+        await PerformTest3(mcpClient, dbPathAccess, key1="test_ACCESS_1", key2="test_ACCESS_2")
+        await PerformTest3(mcpClient, dbPathSQLite, key1="test_SQLITE_1", key2="test_SQLITE_2")
+
 
 async def PerformTest1(mcpClient: Client, dbPath: str, csvPath: str, key: str) -> None:
     """Perform a series of operations on one database."""
@@ -187,6 +191,45 @@ async def PerformTest2(mcpClient: Client,
         # Delete the database and CSV file
         await TestDeleteDatabase(dbPath1)
         await TestDeleteDatabase(dbPath2)
+
+
+async def PerformTest3(mcpClient: Client, dbPath: str, key1: str, key2: str) -> None:
+    """Create two connections to the same database file using different keys."""
+
+    try:
+        # One database with 2 connections: one is read/write, the other is read-only
+        await TestCreateDatabase(mcpClient, dbPath)
+        await TestConnect(mcpClient, key1, dbPath, readOnly=False)
+        await TestConnect(mcpClient, key2, dbPath, readOnly=True)
+
+        # Use improperly update and query tools
+        await TestUpdateWrong(mcpClient, key1)
+
+        try:
+            # Writing using the read-only connection should fail
+            await TestInsert(mcpClient, key2)
+            raise AssertionError("No error was raised for writing on read-only connection.")
+        except ToolError as e:
+            assert "read-only" in str(e)
+            print(f"Correctly caught error for writing on read-only connection")
+
+        # Fill data with the read/write connection, read data with the read-only connection
+        # Read data with the read-only connection
+        await TestCreateTable(mcpClient, key1)
+        await TestInsert(mcpClient, key1)
+        await TestQuery(mcpClient, key2)
+
+        # Disconnect both connections
+        await TestDisconnect(mcpClient, key1)
+        await TestDisconnect(mcpClient, key2)
+        print("Test 3 completed successfully.")
+
+    except (FastMCPError, ToolError) as e:
+        print(f"Operation failed: {e}")
+        raise e
+
+    finally:
+        await TestDeleteDatabase(dbPath)
 
 
 if __name__ == "__main__":

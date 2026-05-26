@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from fastmcp import Client
+from fastmcp.exceptions import ToolError
 from mcp.types import TextContent
 
 
@@ -27,8 +28,8 @@ async def TestDeleteDatabase(dbPath: str) -> None:
         print(f"Test database does not exist at {dbPath}.")
 
 
-async def TestConnect(mcpClient: Client, key: str, dbPath: str) -> None:
-    await mcpClient.call_tool("connect", {"key": key, "databasePath": dbPath})
+async def TestConnect(mcpClient: Client, key: str, dbPath: str, readOnly: bool = False) -> None:
+    await mcpClient.call_tool("connect", {"key": key, "databasePath": dbPath, "readOnly": readOnly})
     print(f"Connected to database '{key}'")
 
 
@@ -113,6 +114,17 @@ async def TestQueryParams(mcpClient: Client, key: str) -> None:
 async def TestQuery(mcpClient: Client, key: str) -> None:
     await TestQueryDirect(mcpClient, key)
     await TestQueryParams(mcpClient, key)
+
+
+async def TestUpdateWrong(mcpClient: Client, key: str) -> None:
+    sql = "INSERT INTO TestTable (ID, Name, Age, Emoji) VALUES (5, 'Jack', 28, '🍀')"
+
+    try:
+        await mcpClient.call_tool("query", {"key": key, "sql": sql})
+        raise AssertionError("No error raised when using query tool with write SQL")
+    except ToolError as e:
+        assert "read-only" in str(e)
+        print(f"Correctly caught error for using query tool with write SQL")
 
 
 async def TestDropTable(mcpClient: Client, key: str) -> None:

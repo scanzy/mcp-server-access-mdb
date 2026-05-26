@@ -40,6 +40,9 @@ Database management:
 - `connect`: Connect to an existing database file, or creates an in-memory database if the file is not specified.
 - `disconnect`: Close a database connection. For in-memory databases, this will clear all its data.
 
+Note: use `connect` tool with `readOnly=true` to open a database in read-only mode.
+For SQLite in-memory databases, read-only mode is not supported.
+
 Data management:
 - `query`: Execute a SQL query to retrieve data from a database.
 - `update`: Execute a SQL query to insert/update/delete data in a database.

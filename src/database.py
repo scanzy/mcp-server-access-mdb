@@ -45,6 +45,7 @@ class DBConnection:
     engine: sa.Engine   # SQLAlchemy engine for the connection
     path: str           # Path to the database file
     driver: DBdriver    # Database driver used for the connection (auto, sqlite, access)
+    readOnly: bool      # True to block write operations, False to allow read/write operations
 
 
 
@@ -66,7 +67,7 @@ def ListConnections(ctx: Context) -> list[dict[str, t.Any]]:
     """List all active database connections, returning key and path for each."""
 
     connections = getattr(ctx.fastmcp, "connections", {})
-    return [{"key": conn.key, "path": conn.path, "driver": conn.driver}
+    return [{"key": conn.key, "path": conn.path, "driver": conn.driver, "readOnly": conn.readOnly}
         for conn in connections.values()]
 
 
@@ -111,12 +112,14 @@ def CreateDatabase(targetPath: str, ctx: Context, driver: DBdriver = "auto") -> 
         raise ToolError(f"Failed to create database: {e}")
 
 
-def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = False, driver: DBdriver = "auto") -> str:
+def Connect(key: str, ctx: Context, databasePath: str = "",
+    readNotes: bool = False, driver: DBdriver = "auto", readOnly: bool = False) -> str:
     """Connect to a database and store the engine under the given key, for future use.
     If readNotes is True, reads notes associated with the database (same name, with .AInotes.* suffix).
     If you already read the notes, do not read them again to go faster.
     To create a temporary in-memory database, do not specify the databasePath.
     Uses the specified driver or autodetects the database type based on file extension.
+    If readOnly is True, opens the connection in read-only mode.
     """
 
     # Check if the key already exists in the engines dictionary
@@ -130,7 +133,9 @@ def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = Fa
     # This allows us to load CSV data without writing to disk
     if databasePath == "":
         if driver not in ["sqlite", "auto"]:
-            raise FastMCPError("In-memory databases are supported only for SQLite.")
+            raise ToolError("In-memory databases are supported only for SQLite.")
+        if readOnly:
+            raise ToolError("In-memory databases do not support readOnly mode.")
         driver = "sqlite"
         connectionUrl = "sqlite:///:memory:"
 
@@ -150,14 +155,19 @@ def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = Fa
     # For Microsoft Access files, use the ODBC driver
     if driver == "access":
         connectionString = f"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={databasePath};"
+        if readOnly:
+            connectionString += "ReadOnly=1;"
         connectionUrl = URL.create("access+pyodbc", query={"odbc_connect": connectionString})
     
     # For SQLite files, use sqlite:/// connection string
     elif driver == "sqlite":
-        connectionUrl = f"sqlite:///{databasePath}"
+        if readOnly:
+            connectionUrl = f"sqlite:///file:{databasePath}?mode=ro&uri=true"
+        else:
+            connectionUrl = f"sqlite:///{databasePath}"
     
     # Handle other unknown file types
-    else: raise FastMCPError(f"Unsupported database driver \"{driver}\"")
+    else: raise ToolError(f"Unsupported database driver \"{driver}\"")
 
     try:
         # Create a new SQLAlchemy engine and store it
@@ -168,7 +178,8 @@ def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = Fa
             conn.execute(sa.text("SELECT 1"))
 
         # store the connection
-        connections[key] = DBConnection(key=key, engine=engine, path=databasePath, driver=driver)
+        connections[key] = DBConnection(
+            key=key, engine=engine, path=databasePath, driver=driver, readOnly=readOnly)
         message = f"Successfully connected to the database with key '{key}'."
         
         # read notes associated with the database
@@ -204,6 +215,18 @@ def Disconnect(key: str, ctx: Context) -> str:
 # ===============
 
 
+def IsReadOnlySql(sql: str) -> bool:
+    """Return True if the SQL statement is read-only: SELECT/WITH/PRAGMA."""
+
+    sqlStripped = sql.strip().upper()
+    if sqlStripped == "": return False
+    return (
+        sqlStripped.startswith("SELECT")
+        or sqlStripped.startswith("WITH")
+        or sqlStripped.startswith("PRAGMA")
+    )
+
+
 def Query(key: str, sql: str, ctx: Context, params: dict[str, t.Any] = {}) -> list[dict]:
     """Execute a SELECT query on the database identified by key and return results as a list of records.
     Use backticks to escape table and column names.
@@ -218,8 +241,14 @@ def Query(key: str, sql: str, ctx: Context, params: dict[str, t.Any] = {}) -> li
     To discover the structure of a table, use SELECT TOP 1 * FROM <table_name>.
     """
 
-    # Use pandas to execute query and convert results to dict format
-    # This automatically handles proper data type conversion
+    # prevent writes using this tool
+    if not IsReadOnlySql(sql):
+        raise ToolError(
+            f"The query tool only allows read-only SQL queries. "
+            "To execute write operations, use the update tool.")
+
+    # Use pandas to execute query
+    # This automatically handles proper data type conversion, to dict format
     with GetEngine(ctx, key).begin() as conn:
         df = pd.read_sql_query(sa.text(sql), conn, params=params)
         return df.to_dict("records")
@@ -234,8 +263,15 @@ def Update(key: str, sql: str, ctx: Context, params: list[dict[str, t.Any]] = []
     If one statement fails, the entire transaction will be rolled back.
     """
 
+    # prevent writes when the connection is read-only
+    connection = GetConnection(ctx, key)
+    if connection.readOnly:
+        raise ToolError(
+            f"Connection '{key}' is read-only. To read data, use the query tool instead. "
+            "To execute write operations, disconnect and reconnect with readOnly=False.")
+
     # Execute the update in a transaction
     # SQLAlchemy automatically commits if no errors occur
-    with GetEngine(ctx, key).begin() as conn:
+    with connection.engine.begin() as conn:
         conn.execute(sa.text(sql), parameters=params)
         return True
