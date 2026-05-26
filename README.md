@@ -32,13 +32,6 @@ To use this MCP server with Claude Desktop (or any other MCP host), clone the re
 Dev note: to use with uvx, we need to create a package and publish it to PyPI.
 
 
-## Supported Database Types
-
-- **Microsoft Access**: `.mdb` and `.accdb` files
-- **SQLite 3**: `.db`, `.sqlite`, and `.sqlite3` files
-- **In-memory SQLite**: When no database path is specified
-
-
 ## Available Tools
 
 Database management:
@@ -61,6 +54,20 @@ Notes management:
 Note: Excel export is not implemented, use haris-musa/excel-mcp-server instead.
 The main problem is tracking the index of the rows and columns in the Excel file, to correctly import/export data to the same cells, and/or insert new rows/columns.
 In addition, merged cells complicate the process, it would be too complex to implement.
+
+
+## Supported Database Types
+
+By default, database driver detection is based on file extension:
+- **Microsoft Access**: `.mdb` and `.accdb`
+- **SQLite 3**: `.db`, `.sqlite`, and `.sqlite3`
+
+If database path is not specified (empty string), an in-memory SQLite database will be created.
+
+To let the server open or create a database file without relying on the extension (for example, if your database file has a non-standard extension), you can specify the driver explicitly using the `driver` parameter in the `connect` or `create` tool.
+- `driver="access"` for **Microsoft Access**
+- `driver="sqlite"` for **SQLite 3**
+- `driver="auto"` (default) automatically detects the driver based on the file extension
 
 
 ## Project structure
@@ -90,4 +97,5 @@ Scouting scripts, used in the first stages to develop basic functionality:
 - [x] Add tools to import data from/to Excel files.
 - [x] Add prompt to guide AI asking info to the user about the database.
 - [x] Store info about files (.AInotes files), to retrieve it later.
+- [x] Add driver parameter to manage databases without relying on file extension.
 - [ ] Add tool to remember imported/exported CSV and Excel files.

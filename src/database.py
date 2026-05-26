@@ -19,6 +19,24 @@ from src.notes import ReadNotes
 # =================================
 
 
+
+# available database drivers and their associated file extensions
+DBdriver = t.Literal["auto", "sqlite", "access"]
+
+driverExtensions: dict[DBdriver, list[str]] = {
+    "sqlite": [".db", ".sqlite", ".sqlite3"],
+    "access": [".mdb", ".accdb"],
+}
+
+
+def GetSupportedDriversHint() -> str:
+    """Return a hint string listing supported database drivers and their file extensions."""
+    hint = "Supported database drivers and file extensions:\n"
+    for driver, extensions in driverExtensions.items():
+        hint += f"- Driver \"{driver}\": {', '.join(extensions)}.\n"
+    return hint
+
+
 @dataclass
 class DBConnection:
     """Dataclass to hold information about a database connection."""
@@ -26,6 +44,7 @@ class DBConnection:
     key: str            # Unique identifier for the connection
     engine: sa.Engine   # SQLAlchemy engine for the connection
     path: str           # Path to the database file
+    driver: DBdriver    # Database driver used for the connection (auto, sqlite, access)
 
 
 
@@ -47,7 +66,8 @@ def ListConnections(ctx: Context) -> list[dict[str, t.Any]]:
     """List all active database connections, returning key and path for each."""
 
     connections = getattr(ctx.fastmcp, "connections", {})
-    return [{"key": conn.key, "path": conn.path} for conn in connections.values()]
+    return [{"key": conn.key, "path": conn.path, "driver": conn.driver}
+        for conn in connections.values()]
 
 
 
@@ -56,9 +76,9 @@ def ListConnections(ctx: Context) -> list[dict[str, t.Any]]:
 
 
 
-def CreateDatabase(targetPath: str, ctx: Context) -> str:
-    """Create a new empty database, detect type based on extension.
-    Supported extensions: .db, .sqlite, .sqlite3, .mdb, .accdb.
+def CreateDatabase(targetPath: str, ctx: Context, driver: DBdriver = "auto") -> str:
+    """Create a new empty database, type based on driver or file extension.
+    If driver is set to "auto", the type is detected based on the file extension.
     """
 
     # Check if the target path is valid and does not already exist
@@ -68,13 +88,13 @@ def CreateDatabase(targetPath: str, ctx: Context) -> str:
 
     try:
         # For SQLite databases, create an empty database file
-        if targetPath.endswith(".db") or targetPath.endswith(".sqlite") or targetPath.endswith(".sqlite3"):
+        if any(targetPath.endswith(ext) for ext in driverExtensions["sqlite"]):
             import sqlite3
             sqlite3.connect(targetPath)
             return f"SQLite database created at {target}"
         
         # For MS Access databases, copy the template
-        elif targetPath.endswith(".mdb") or targetPath.endswith(".accdb"):
+        elif any(targetPath.endswith(ext) for ext in driverExtensions["access"]):
 
             # Ensure the empty template exists
             emptyTemplate = Path(__file__).parent.parent / "empty.mdb"
@@ -85,18 +105,18 @@ def CreateDatabase(targetPath: str, ctx: Context) -> str:
             return f"MS Access database created at {target}"
         
         else:
-            raise FastMCPError(f"Unsupported database file extension: {targetPath}. "
-                "Supported extensions: .db, .sqlite, .sqlite3, .mdb, .accdb")
-            
+            raise FastMCPError(f"Unsupported database file extension: {targetPath}. {GetSupportedDriversHint()}")
+
     except Exception as e:
         raise FastMCPError(f"Failed to create database: {e}")
 
 
-def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = False) -> str:
+def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = False, driver: DBdriver = "auto") -> str:
     """Connect to a database and store the engine under the given key, for future use.
     If readNotes is True, reads notes associated with the database (same name, with .AInotes.* suffix).
     If you already read the notes, do not read them again to go faster.
     To create a temporary in-memory database, do not specify the databasePath.
+    Uses the specified driver or autodetects the database type based on file extension.
     """
 
     # Check if the key already exists in the engines dictionary
@@ -109,19 +129,35 @@ def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = Fa
     # If no database path is specified, create an in-memory database
     # This allows us to load CSV data without writing to disk
     if databasePath == "":
+        if driver not in ["sqlite", "auto"]:
+            raise FastMCPError("In-memory databases are supported only for SQLite.")
+        driver = "sqlite"
         connectionUrl = "sqlite:///:memory:"
-    
+
+    # Detects driver based on file extension if driver is set to "auto"
+    if driver == "auto":
+        for drv, extensions in driverExtensions.items():
+            if any(databasePath.endswith(ext) for ext in extensions):
+                driver = drv
+                break
+        else:
+            raise FastMCPError(
+                f"Cannot autodetect database driver for file: \"{databasePath}\".\n"
+                "Please specify the driver explicitly, or use a supported file extension.\n"
+                f"{GetSupportedDriversHint()}"
+            )
+
     # For Microsoft Access files, use the ODBC driver
-    elif databasePath.endswith(".mdb") or databasePath.endswith(".accdb"):
+    if driver == "access":
         connectionString = f"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={databasePath};"
         connectionUrl = URL.create("access+pyodbc", query={"odbc_connect": connectionString})
     
     # For SQLite files, use sqlite:/// connection string
-    elif databasePath.endswith(".db") or databasePath.endswith(".sqlite") or databasePath.endswith(".sqlite3"):
+    elif driver == "sqlite":
         connectionUrl = f"sqlite:///{databasePath}"
     
     # Handle other unknown file types
-    else: raise FastMCPError(f"Unsupported database file extension: {databasePath}")
+    else: raise FastMCPError(f"Unsupported database driver \"{driver}\"")
 
     try:
         # Create a new SQLAlchemy engine and store it
@@ -132,7 +168,7 @@ def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = Fa
             conn.execute(sa.text("SELECT 1"))
 
         # store the connection
-        connections[key] = DBConnection(key=key, engine=engine, path=databasePath)
+        connections[key] = DBConnection(key=key, engine=engine, path=databasePath, driver=driver)
         message = f"Successfully connected to the database with key '{key}'."
         
         # read notes associated with the database
@@ -150,7 +186,7 @@ def Connect(key: str, ctx: Context, databasePath: str = "", readNotes: bool = Fa
 
 
 def Disconnect(key: str, ctx: Context) -> str:
-    """Disconnect from the MS Access database identified by key."""
+    """Disconnect from the database identified by key."""
 
     # Ensure the connection exists
     connections = getattr(ctx.fastmcp, "connections", {})
